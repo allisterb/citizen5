@@ -20,7 +20,7 @@ var log = logging.Logger("CLI")
 // Command-line arguments
 var CLI struct {
 	Debug bool    `help:"Enable debug mode."`
-	Oid   PingCmd `cmd:"" help:"Generate or parse Motr object id."`
+	Ping  PingCmd `cmd:"" help:"Generate or parse Motr object id."`
 }
 
 func main() {
