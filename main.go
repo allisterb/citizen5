@@ -5,7 +5,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/jeandeaual/go-locale"
 	"github.com/mbndr/figlet4go"
 
 	"github.com/allisterb/citizen5/util"
@@ -21,6 +20,7 @@ var log = logging.Logger("CLI")
 // Command-line arguments
 var CLI struct {
 	Debug bool    `help:"Enable debug mode."`
+	WSUrl string  `help:"The URL of the Nym WebSocket." default:"http://127.0.0.1:1977"`
 	Ping  PingCmd `cmd:"" help:"Generate or parse Motr object id."`
 }
 
@@ -48,7 +48,8 @@ func main() {
 }
 
 func (l *PingCmd) Run(ctx *kong.Context) error {
-	lc, _ := locale.GetLocale()
-	log.Info("Locale %s", lc)
+	//lc, _ := locale.GetLocale()
+	ws := &CLI.WSUrl
+	log.Info("Locale %s", ws)
 	return nil
 }
