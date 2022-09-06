@@ -5,6 +5,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/jeandeaual/go-locale"
 	"github.com/mbndr/figlet4go"
 
 	"github.com/allisterb/citizen5/util"
@@ -15,12 +16,12 @@ type PingCmd struct {
 	//Parse bool   `help:"Parse name as 128-bit object id." short:"P"`
 }
 
-var log = logging.Logger("CLI")
+var log = logging.Logger("main")
 
 // Command-line arguments
 var CLI struct {
 	Debug bool    `help:"Enable debug mode."`
-	WSUrl string  `help:"The URL of the Nym WebSocket." default:"http://127.0.0.1:1977"`
+	WSUrl string  `help:"The URL of the Nym websocket client." default:"http://127.0.0.1:1977"`
 	Ping  PingCmd `cmd:"" help:"Generate or parse Motr object id."`
 }
 
@@ -44,12 +45,11 @@ func main() {
 		log.Info("Debug mode enabled.")
 	}
 	ctx.FatalIfErrorf(ctx.Run(&kong.Context{}))
-
 }
 
 func (l *PingCmd) Run(ctx *kong.Context) error {
-	//lc, _ := locale.GetLocale()
-	ws := &CLI.WSUrl
-	log.Info("Locale %s", ws)
+	lc, _ := locale.GetLanguage()
+	//ws := &CLI.WSUrl
+	log.Infof("Locale %s", lc)
 	return nil
 }
