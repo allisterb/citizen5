@@ -1,0 +1,3 @@
+[submodule "ext/nym"]
+	path = ext/nym
+	url = https://github.com/nymtech/nym
