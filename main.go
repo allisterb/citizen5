@@ -16,13 +16,17 @@ type PingCmd struct {
 	Binary  bool   `help:"Send a binary file as the test message."`
 }
 
+type InitCmd struct {
+}
+
 var log = logging.Logger("main")
 
 // Command-line arguments
 var CLI struct {
 	Debug bool    `help:"Enable debug mode."`
 	WSUrl string  `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
-	Ping  PingCmd `cmd:"" help:"Send a test message to a Nym address."`
+	Ping  PingCmd `cmd:"" help:"Send a test message to a Nym mixnet address."`
+	Init InitCmd `cmd:"" help:"Initialze the citizen5 client."`
 }
 
 func init() {
@@ -74,3 +78,5 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 	}
 	return nil
 }
+
+func (l *InitCmd) Run(ctx *kong.Context) error {
