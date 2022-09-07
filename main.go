@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 
 	"github.com/alecthomas/kong"
 	logging "github.com/ipfs/go-log/v2"
@@ -10,6 +13,7 @@ import (
 
 	"github.com/allisterb/citizen5/db"
 	"github.com/allisterb/citizen5/nym"
+	"github.com/allisterb/citizen5/server"
 	"github.com/allisterb/citizen5/util"
 )
 
@@ -91,10 +95,20 @@ func (l *InitCmd) Run(ctx *kong.Context) error {
 
 func (s *InitServerCmd) Run(clictx *kong.Context) error {
 	ctx, _ := context.WithCancel(context.Background())
+	pub, priv := db.GenerateIPFSIdentity()
 	err := db.CreateDB(ctx)
 	if err != nil {
 		log.Errorf("error creating OrbitDB database: %v", err)
 		return nil
 	}
+	serverConfig := server.Config{Pubkey: pub, PrivKey: priv}
+	data, _ := json.MarshalIndent(serverConfig, "", " ")
+	err = ioutil.WriteFile(filepath.Join(util.GetUserHomeDir(), ".citizen5", "server.json"), data, 0644)
+	if err != nil {
+		log.Errorf("error creating server configuration file: %v", err)
+		return nil
+	}
+	log.Infof("IPFS node public key is %s", pub)
+	log.Infof("citizen5 server initialized.")
 	return nil
 }
