@@ -5,7 +5,6 @@ import (
 
 	"github.com/alecthomas/kong"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/jeandeaual/go-locale"
 	"github.com/mbndr/figlet4go"
 
 	"github.com/allisterb/citizen5/nym"
@@ -49,18 +48,15 @@ func main() {
 }
 
 func (l *PingCmd) Run(ctx *kong.Context) error {
-	lc, _ := locale.GetLanguage()
-	log.Infof("Locale %s", lc)
 	conn, err := nym.GetConn(CLI.WSUrl)
 	if err != nil {
-		log.Errorf("could not open WebSocket connection to %s:%v", CLI.WSUrl, err)
+		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
 		return nil
 	}
 	defer conn.Close()
 	if l.Address == "" {
 		l.Address = nym.GetSelfAddressText(conn)
-		d := len(l.Address)
-		log.Info("pinging own client address...", d)
+		log.Info("pinging own client address...")
 	}
 	if l.Binary {
 		if err := nym.SendBinary(conn, nym.GetSelfAddressBinary(conn), "main.go"); err != nil {
@@ -68,13 +64,13 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 			return err
 		}
 	} else {
-		if err := nym.SendText(conn, l.Address, "hello", true); err != nil {
+		if err := nym.SendText(conn, l.Address, "hello", false); err != nil {
 			log.Errorf("could not send text message to Nym address %s:%v", l.Address, err)
 			return err
 		}
 	}
-	if m, err := nym.ReceiveResponse(conn); err == nil {
-		log.Infof("Received ping message: %s", m)
+	if _, err := nym.ReceiveResponse(conn); err == nil {
+		log.Infof("Received ping message OK.")
 	}
 	return nil
 }

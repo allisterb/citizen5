@@ -19,77 +19,6 @@ type Response struct {
 
 var log = logging.Logger("nym")
 
-func ResponseIsError(rawResponse []byte) bool {
-	return rawResponse[0] == errorResponseTag
-}
-
-func ResponseIsBinary(rawResponse []byte) bool {
-	return rawResponse[0] == receivedResponseTag
-}
-
-func ResponseIsSelfAddress(rawResponse []byte) bool {
-	return rawResponse[0] == selfAddressResponseTag
-}
-
-func ResponseIsText(rawResponse []byte) bool {
-	return !ResponseIsError(rawResponse) && !ResponseIsBinary(rawResponse) && !ResponseIsSelfAddress(rawResponse)
-}
-
-func GetSelfAddressText(conn *websocket.Conn) string {
-	selfAddressRequest, err := json.Marshal(map[string]string{"type": "selfAddress"})
-	if err != nil {
-		panic(err)
-	}
-
-	if err = conn.WriteMessage(websocket.TextMessage, []byte(selfAddressRequest)); err != nil {
-		panic(err)
-	}
-
-	responseJSON := make(map[string]interface{})
-	err = conn.ReadJSON(&responseJSON)
-	if err != nil {
-		panic(err)
-	}
-
-	return responseJSON["address"].(string)
-}
-
-func GetSelfAddressBinary(conn *websocket.Conn) []byte {
-	selfAddressRequest := makeSelfAddressRequest()
-	if err := conn.WriteMessage(websocket.BinaryMessage, selfAddressRequest); err != nil {
-		panic(err)
-	}
-	_, receivedResponse, err := conn.ReadMessage()
-	if err != nil {
-		panic(err)
-	}
-	return parseSelfAddressResponse(receivedResponse)
-
-}
-func GetConn(uri string) (*websocket.Conn, error) {
-	conn, _, err := websocket.DefaultDialer.Dial(uri, nil)
-	if err != nil {
-		return nil, err
-	} else {
-		return conn, nil
-	}
-}
-
-func SendText(conn *websocket.Conn, address string, message string, withReplySurb bool) error {
-	sendRequest, err := json.Marshal(map[string]interface{}{
-		"type":          "send",
-		"recipient":     address,
-		"message":       message,
-		"withReplySurb": withReplySurb,
-	})
-	if err != nil {
-		return err
-	}
-
-	log.Infof("sending '%v' over the mix network to %v...", message, address)
-	return conn.WriteMessage(websocket.TextMessage, []byte(sendRequest))
-}
-
 // request tags
 const sendRequestTag = 0x00
 const replyRequestTag = 0x01
@@ -185,13 +114,84 @@ func parseBinaryResponse(rawResponse []byte) ([]byte, []byte) {
 	}
 }
 
+func ResponseIsError(rawResponse []byte) bool {
+	return rawResponse[0] == errorResponseTag
+}
+
+func ResponseIsBinary(rawResponse []byte) bool {
+	return rawResponse[0] == receivedResponseTag
+}
+
+func ResponseIsSelfAddress(rawResponse []byte) bool {
+	return rawResponse[0] == selfAddressResponseTag
+}
+
+func ResponseIsText(rawResponse []byte) bool {
+	return !ResponseIsError(rawResponse) && !ResponseIsBinary(rawResponse) && !ResponseIsSelfAddress(rawResponse)
+}
+
+func GetSelfAddressText(conn *websocket.Conn) string {
+	selfAddressRequest, err := json.Marshal(map[string]string{"type": "selfAddress"})
+	if err != nil {
+		panic(err)
+	}
+
+	if err = conn.WriteMessage(websocket.TextMessage, []byte(selfAddressRequest)); err != nil {
+		panic(err)
+	}
+
+	responseJSON := make(map[string]interface{})
+	err = conn.ReadJSON(&responseJSON)
+	if err != nil {
+		panic(err)
+	}
+
+	return responseJSON["address"].(string)
+}
+
+func GetSelfAddressBinary(conn *websocket.Conn) []byte {
+	selfAddressRequest := makeSelfAddressRequest()
+	if err := conn.WriteMessage(websocket.BinaryMessage, selfAddressRequest); err != nil {
+		panic(err)
+	}
+	_, receivedResponse, err := conn.ReadMessage()
+	if err != nil {
+		panic(err)
+	}
+	return parseSelfAddressResponse(receivedResponse)
+
+}
+func GetConn(uri string) (*websocket.Conn, error) {
+	conn, _, err := websocket.DefaultDialer.Dial(uri, nil)
+	if err != nil {
+		return nil, err
+	} else {
+		return conn, nil
+	}
+}
+
+func SendText(conn *websocket.Conn, address string, message string, withReplySurb bool) error {
+	sendRequest, err := json.Marshal(map[string]interface{}{
+		"type":          "send",
+		"recipient":     address,
+		"message":       message,
+		"withReplySurb": withReplySurb,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Infof("sending '%v' over the mix network to %v...", message, address)
+	return conn.WriteMessage(websocket.TextMessage, []byte(sendRequest))
+}
+
 func SendBinary(conn *websocket.Conn, address []byte, filename string) error {
 	readData, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
 	}
 	sendRequest := makeSendRequest(address, readData, false)
-	log.Infof("sending content of file %s over the Nym network...", filename)
+	log.Infof("sending content of file %s over mix network...", filename)
 	return conn.WriteMessage(websocket.BinaryMessage, sendRequest)
 }
 
@@ -208,29 +208,30 @@ func ReceiveResponse(conn *websocket.Conn) (Response, error) {
 	resp := Response{}
 	r, err := Receive(conn)
 	if err != nil {
-		log.Errorf("Error receiving message from Nym WebSocket connection: %v", err)
+		log.Errorf("error receiving message from Nym WebSocket connection: %v", err)
 		return resp, err
 	}
+	resp.RawResponse = r
 	if ResponseIsError(r) {
 		resp.Error = string(r[1:])
+		log.Infof("received error response from mix network: %s", resp.Error)
 	} else if ResponseIsBinary(r) {
 		a, b := parseBinaryResponse(r)
 		resp.Binary = a
 		resp.BinarySurb = b
+		log.Infof("received binary response of length %v from mix network", len(resp.Binary))
+		if resp.BinarySurb != nil {
+			log.Infof("reply surb is %v", resp.BinarySurb)
+		}
 	} else if ResponseIsText(r) {
 		var data map[string]interface{}
 		if err = json.Unmarshal(r, &data); err != nil {
-			log.Errorf("Error unmarshalling JSON from response: %v", err)
+			log.Errorf("error unmarshalling JSON from response: %v", err)
 			return resp, err
 		} else {
 			resp.Json = data
+			log.Infof("received JSON response from mix network: %v", resp.Json)
 		}
 	}
 	return resp, nil
 }
-
-//if replySURB != nil {
-//	panic("did not expect a replySURB!")
-//}
-//fmt.Printf("writing the file back to the disk!\n")
-//ioutil.WriteFile("received_file_no_reply", fileData, 0644)
