@@ -5,23 +5,28 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	orbitdb "berty.tech/go-orbit-db"
 
 	ds "github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
 	cfg "github.com/ipfs/go-ipfs/config"
-	repo "github.com/ipfs/go-ipfs/repo"
-	iface "github.com/ipfs/interface-go-ipfs-core"
-
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-
 	ipfsCore "github.com/ipfs/go-ipfs/core"
 	coreapi "github.com/ipfs/go-ipfs/core/coreapi"
+	libp2p "github.com/ipfs/go-ipfs/core/node/libp2p"
+	repo "github.com/ipfs/go-ipfs/repo"
+	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
+
+var log = logging.Logger("db")
 
 func initIPFSRepo(ctx context.Context) repo.Repo {
 	c := cfg.Config{}
+	//dc, _ := cfg.Init(io.Discard, 2048)
+	//log.Info(dc.API)
 	priv, pub, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
 	if err != nil {
 		panic(err)
@@ -38,7 +43,12 @@ func initIPFSRepo(ctx context.Context) repo.Repo {
 	}
 
 	c.Pubsub.Enabled = cfg.True
-	c.Bootstrap = []string{}
+	c.Bootstrap = []string{
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
+	}
 	c.Addresses.Swarm = []string{"/ip4/127.0.0.1/tcp/4001", "/ip4/127.0.0.1/udp/4001/quic"}
 	c.Identity.PeerID = pid.Pretty()
 	c.Identity.PrivKey = base64.StdEncoding.EncodeToString(privkeyb)
@@ -51,8 +61,9 @@ func initIPFSRepo(ctx context.Context) repo.Repo {
 
 func InitIPFSNode(ctx context.Context) (*ipfsCore.IpfsNode, func()) {
 	core, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
-		Online: true,
-		Repo:   initIPFSRepo(ctx),
+		Online:  true,
+		Routing: libp2p.DHTOption,
+		Repo:    initIPFSRepo(ctx),
 		ExtraOpts: map[string]bool{
 			"pubsub": true,
 		},
@@ -65,9 +76,10 @@ func InitIPFSNode(ctx context.Context) (*ipfsCore.IpfsNode, func()) {
 }
 
 func InitIPFSApi(ctx context.Context) (iface.CoreAPI, func(), error) {
-	core, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
-		Online: true,
-		Repo:   initIPFSRepo(ctx),
+	node, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
+		Online:  true,
+		Routing: libp2p.DHTOption,
+		Repo:    initIPFSRepo(ctx),
 		ExtraOpts: map[string]bool{
 			"pubsub": true,
 		},
@@ -75,44 +87,15 @@ func InitIPFSApi(ctx context.Context) (iface.CoreAPI, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	c, e := coreapi.NewCoreAPI(core)
+	log.Infof("IPFS Node created. We are: %s", node.PeerHost.ID())
+	c, e := coreapi.NewCoreAPI(node)
 	if e != nil {
 		return nil, nil, e
 	} else {
 		clean := func() {
-			core.Close()
+			node.Close()
 		}
 		return c, clean, e
-	}
-}
-func initIPFSAPIs(ctx context.Context, count int) ([]iface.CoreAPI, func()) {
-	coreAPIs := make([]iface.CoreAPI, count)
-	cleans := make([]func(), count)
-
-	for i := 0; i < count; i++ {
-		core, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
-			Online: true,
-			Repo:   initIPFSRepo(ctx),
-			ExtraOpts: map[string]bool{
-				"pubsub": true,
-			},
-		})
-		if err != nil {
-			panic(err)
-		}
-		coreAPIs[i], err = coreapi.NewCoreAPI(core)
-		if err != nil {
-			panic(err)
-		}
-		cleans[i] = func() {
-			core.Close()
-		}
-	}
-
-	return coreAPIs, func() {
-		for i := 0; i < count; i++ {
-			cleans[i]()
-		}
 	}
 }
 
@@ -126,5 +109,4 @@ func CreateDB(ctx context.Context, name *string) (orbitdb.OrbitDB, func(), error
 		Directory: name,
 	})
 	return d, cleanup, e
-	//orbitdb1.Identity()
 }

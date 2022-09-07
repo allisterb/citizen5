@@ -48,12 +48,14 @@ func main() {
 		figlet4go.ColorYellow,
 		figlet4go.ColorCyan,
 	}
-	renderStr, _ := ascii.RenderOpts("citizen5", options)
+	renderStr, _ := ascii.RenderOpts("citizenfive", options)
 	fmt.Print(renderStr)
 	ctx := kong.Parse(&CLI)
 	if util.Contains(ctx.Args, "--debug") {
-		logging.SetAllLoggers(logging.LevelInfo)
+		logging.SetAllLoggers(logging.LevelDebug)
 		log.Info("Debug mode enabled.")
+	} else {
+		logging.SetAllLoggers(logging.LevelInfo)
 	}
 	ctx.FatalIfErrorf(ctx.Run(&kong.Context{}))
 }
