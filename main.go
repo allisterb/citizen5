@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/alecthomas/kong"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mbndr/figlet4go"
 
+	"github.com/allisterb/citizen5/db"
 	"github.com/allisterb/citizen5/nym"
 	"github.com/allisterb/citizen5/util"
 )
@@ -19,6 +21,10 @@ type PingCmd struct {
 type InitCmd struct {
 }
 
+type CreateDbCmd struct {
+	Name string `arg:"" name:"name" help:"Create a citizen5 database with this name."`
+}
+
 var log = logging.Logger("main")
 
 // Command-line arguments
@@ -26,7 +32,7 @@ var CLI struct {
 	Debug bool    `help:"Enable debug mode."`
 	WSUrl string  `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
 	Ping  PingCmd `cmd:"" help:"Send a test message to a Nym mixnet address."`
-	Init InitCmd `cmd:"" help:"Initialze the citizen5 client."`
+	Init  InitCmd `cmd:"" help:"Initialze the citizen5 client."`
 }
 
 func init() {
@@ -80,3 +86,18 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 }
 
 func (l *InitCmd) Run(ctx *kong.Context) error {
+	return nil
+}
+
+func (c *CreateDbCmd) Run(clictx *kong.Context) error {
+	ctx, _ := context.WithCancel(context.Background())
+	db1, cleanup, err := db.CreateDB(ctx, &c.Name)
+	if err != nil {
+		log.Errorf("error creating OrbitDB database %s: %v", c.Name, err)
+		return nil
+	}
+	log.Infof("Identity of db: %s", db1.Identity().ID)
+	cleanup()
+	return nil
+
+}
