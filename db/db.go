@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"os"
+	"path/filepath"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -19,6 +21,8 @@ import (
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
+
+	"github.com/allisterb/citizen5/util"
 )
 
 var log = logging.Logger("db")
@@ -59,7 +63,24 @@ func initIPFSRepo(ctx context.Context) repo.Repo {
 	}
 }
 
+func GenerateIPFSIdentity() (string, string) {
+	priv, pub, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	privkeyb, err := crypto.MarshalPrivateKey(priv)
+	if err != nil {
+		panic(err)
+	}
+	pubkeyb, err := crypto.MarshalPublicKey(pub)
+	if err != nil {
+		panic(err)
+	}
+	return base64.StdEncoding.EncodeToString(privkeyb), base64.StdEncoding.EncodeToString(pubkeyb)
+
+}
 func InitIPFSNode(ctx context.Context) (*ipfsCore.IpfsNode, func()) {
+	log.Infof("starting IPFS node...")
 	core, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
 		Online:  true,
 		Routing: libp2p.DHTOption,
@@ -99,14 +120,32 @@ func InitIPFSApi(ctx context.Context) (iface.CoreAPI, func(), error) {
 	}
 }
 
-func CreateDB(ctx context.Context, name *string) (orbitdb.OrbitDB, func(), error) {
+func CreateDB(ctx context.Context) error {
+	h := util.GetUserHomeDir()
+	datapath := filepath.Join(h, ".citizen5")
+	dbpath := filepath.Join(datapath, "db")
+	os.MkdirAll(datapath, os.ModePerm)
 	ipfs, cleanup, err := InitIPFSApi(ctx)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
+	log.Infof("creating OrbitDB database at local path %s...", dbpath)
 	d, e := orbitdb.NewOrbitDB(ctx, ipfs, &orbitdb.NewOrbitDBOptions{
-		// DirectChannelFactory: directchannel.InitDirectChannelFactory(zap.NewNop(), node1.PeerHost),
-		Directory: name,
+		//DirectChannelFactory: directchannel.InitDirectChannelFactory(zap.NewNop(), node1.PeerHost),
+		Directory: &dbpath,
+		Logger:    log.Desugar(),
 	})
-	return d, cleanup, e
+	if e != nil {
+		return err
+	}
+	docs, err := d.Docs(ctx, "reports", nil)
+	if err != nil {
+		log.Errorf("could not create OrbitDB document database: %v", err)
+		return err
+	} else {
+		log.Infof("created OrbitDB document database 'reports' at IPFS address %s", docs.Address().String())
+	}
+	d.Close()
+	cleanup()
+	return nil
 }

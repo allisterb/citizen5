@@ -14,26 +14,25 @@ import (
 )
 
 type PingCmd struct {
-	Address string `arg:"" name:"address" help:"Nym address to send test message to." default:""`
+	Address string `arg:"" name:"address" help:"Nym mixnet address to send test message to." default:""`
 	Binary  bool   `help:"Send a binary file as the test message."`
 }
 
 type InitCmd struct {
 }
 
-type CreateDbCmd struct {
-	Name string `arg:"" name:"name" help:"Create a citizen5 database with this name."`
+type InitServerCmd struct {
 }
 
 var log = logging.Logger("main")
 
 // Command-line arguments
 var CLI struct {
-	Debug    bool        `help:"Enable debug mode."`
-	WSUrl    string      `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
-	Ping     PingCmd     `cmd:"" help:"Send a test message to a Nym mixnet address."`
-	Init     InitCmd     `cmd:"" help:"Initialze the citizen5 client."`
-	CreateDb CreateDbCmd `cmd:"" help:"Create database."`
+	Debug      bool          `help:"Enable debug mode."`
+	WSUrl      string        `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
+	Ping       PingCmd       `cmd:"" help:"Send a test message to a Nym mixnet address."`
+	Init       InitCmd       `cmd:"" help:"Initialize the citizen5 client."`
+	InitServer InitServerCmd `cmd:"" help:"Initialize the citizen5 server."`
 }
 
 func init() {
@@ -54,8 +53,6 @@ func main() {
 	if util.Contains(ctx.Args, "--debug") {
 		logging.SetAllLoggers(logging.LevelDebug)
 		log.Info("Debug mode enabled.")
-	} else {
-		logging.SetAllLoggers(logging.LevelInfo)
 	}
 	ctx.FatalIfErrorf(ctx.Run(&kong.Context{}))
 }
@@ -92,15 +89,12 @@ func (l *InitCmd) Run(ctx *kong.Context) error {
 	return nil
 }
 
-func (c *CreateDbCmd) Run(clictx *kong.Context) error {
+func (s *InitServerCmd) Run(clictx *kong.Context) error {
 	ctx, _ := context.WithCancel(context.Background())
-	db1, cleanup, err := db.CreateDB(ctx, &c.Name)
+	err := db.CreateDB(ctx)
 	if err != nil {
-		log.Errorf("error creating OrbitDB database %s: %v", c.Name, err)
+		log.Errorf("error creating OrbitDB database: %v", err)
 		return nil
 	}
-	log.Infof("Identity of db: %s", db1.Identity().ID)
-	cleanup()
 	return nil
-
 }
