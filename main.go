@@ -29,10 +29,11 @@ var log = logging.Logger("main")
 
 // Command-line arguments
 var CLI struct {
-	Debug bool    `help:"Enable debug mode."`
-	WSUrl string  `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
-	Ping  PingCmd `cmd:"" help:"Send a test message to a Nym mixnet address."`
-	Init  InitCmd `cmd:"" help:"Initialze the citizen5 client."`
+	Debug    bool        `help:"Enable debug mode."`
+	WSUrl    string      `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
+	Ping     PingCmd     `cmd:"" help:"Send a test message to a Nym mixnet address."`
+	Init     InitCmd     `cmd:"" help:"Initialze the citizen5 client."`
+	CreateDb CreateDbCmd `cmd:"" help:"Create database."`
 }
 
 func init() {

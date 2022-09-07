@@ -9,7 +9,7 @@ import (
 
 	ds "github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
-	cfg "github.com/ipfs/go-ipfs-config"
+	cfg "github.com/ipfs/go-ipfs/config"
 	repo "github.com/ipfs/go-ipfs/repo"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 
