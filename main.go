@@ -95,8 +95,8 @@ func (l *InitCmd) Run(ctx *kong.Context) error {
 
 func (s *InitServerCmd) Run(clictx *kong.Context) error {
 	ctx, _ := context.WithCancel(context.Background())
-	pub, priv := db.GenerateIPFSIdentity()
-	err := db.CreateDB(ctx)
+	priv, pub := db.GenerateIPFSIdentity()
+	err := db.CreateDB(ctx, priv, pub)
 	if err != nil {
 		log.Errorf("error creating OrbitDB database: %v", err)
 		return nil
@@ -108,7 +108,7 @@ func (s *InitServerCmd) Run(clictx *kong.Context) error {
 		log.Errorf("error creating server configuration file: %v", err)
 		return nil
 	}
-	log.Infof("IPFS node public key is %s", pub)
+	log.Infof("IPFS node public key is %s", db.GetIPFSIdentity(pub))
 	log.Infof("citizen5 server initialized.")
 	return nil
 }

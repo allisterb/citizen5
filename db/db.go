@@ -27,40 +27,24 @@ import (
 
 var log = logging.Logger("db")
 
-func initIPFSRepo(ctx context.Context) repo.Repo {
-	c := cfg.Config{}
-	//dc, _ := cfg.Init(io.Discard, 2048)
-	//log.Info(dc.API)
-	priv, pub, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+func GetIPFSIdentity(pubkey string) peer.ID {
+	pubb, err := base64.StdEncoding.DecodeString(pubkey)
 	if err != nil {
 		panic(err)
 	}
-
-	pid, err := peer.IDFromPublicKey(pub)
+	//priv, err := crypto.UnmarshalPrivateKey(privb)
+	//if err != nil {
+	//	panic(err)
+	//}
+	pub, err := crypto.UnmarshalPublicKey(pubb)
 	if err != nil {
 		panic(err)
 	}
-
-	privkeyb, err := crypto.MarshalPrivateKey(priv)
+	id, err := peer.IDFromPublicKey(pub)
 	if err != nil {
 		panic(err)
 	}
-
-	c.Pubsub.Enabled = cfg.True
-	c.Bootstrap = []string{
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
-		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
-	}
-	c.Addresses.Swarm = []string{"/ip4/127.0.0.1/tcp/4001", "/ip4/127.0.0.1/udp/4001/quic"}
-	c.Identity.PeerID = pid.Pretty()
-	c.Identity.PrivKey = base64.StdEncoding.EncodeToString(privkeyb)
-
-	return &repo.Mock{
-		D: dsync.MutexWrap(ds.NewMapDatastore()),
-		C: c,
-	}
+	return id
 }
 
 func GenerateIPFSIdentity() (string, string) {
@@ -76,31 +60,40 @@ func GenerateIPFSIdentity() (string, string) {
 	if err != nil {
 		panic(err)
 	}
-	return base64.StdEncoding.EncodeToString(privkeyb), base64.StdEncoding.EncodeToString(pubkeyb)
-
-}
-func InitIPFSNode(ctx context.Context) (*ipfsCore.IpfsNode, func()) {
-	log.Infof("starting IPFS node...")
-	core, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
-		Online:  true,
-		Routing: libp2p.DHTOption,
-		Repo:    initIPFSRepo(ctx),
-		ExtraOpts: map[string]bool{
-			"pubsub": true,
-		},
-	})
+	id, err := peer.IDFromPublicKey(pub)
 	if err != nil {
 		panic(err)
 	}
-	cleanup := func() { core.Close() }
-	return core, cleanup
+	log.Infof("generated IPFS identity %s", id.Pretty())
+	return base64.StdEncoding.EncodeToString(privkeyb), base64.StdEncoding.EncodeToString(pubkeyb)
+
 }
 
-func InitIPFSApi(ctx context.Context) (iface.CoreAPI, func(), error) {
+func initIPFSRepo(ctx context.Context, privkey string, pubkey string) repo.Repo {
+	pid := GetIPFSIdentity(pubkey)
+	c := cfg.Config{}
+	c.Pubsub.Enabled = cfg.True
+	c.Bootstrap = []string{
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
+		"/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
+	}
+	c.Addresses.Swarm = []string{"/ip4/127.0.0.1/tcp/4001", "/ip4/127.0.0.1/udp/4001/quic"}
+	c.Identity.PeerID = pid.Pretty()
+	c.Identity.PrivKey = privkey
+
+	return &repo.Mock{
+		D: dsync.MutexWrap(ds.NewMapDatastore()),
+		C: c,
+	}
+}
+
+func InitIPFSApi(ctx context.Context, privkey string, pubkey string) (iface.CoreAPI, func(), error) {
 	node, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
 		Online:  true,
 		Routing: libp2p.DHTOption,
-		Repo:    initIPFSRepo(ctx),
+		Repo:    initIPFSRepo(ctx, privkey, pubkey),
 		ExtraOpts: map[string]bool{
 			"pubsub": true,
 		},
@@ -108,7 +101,7 @@ func InitIPFSApi(ctx context.Context) (iface.CoreAPI, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Infof("IPFS Node created. We are: %s", node.PeerHost.ID())
+	log.Infof("IPFS Node created. We are: %s", node.Identity.Pretty())
 	c, e := coreapi.NewCoreAPI(node)
 	if e != nil {
 		return nil, nil, e
@@ -120,12 +113,12 @@ func InitIPFSApi(ctx context.Context) (iface.CoreAPI, func(), error) {
 	}
 }
 
-func CreateDB(ctx context.Context) error {
+func CreateDB(ctx context.Context, privkey string, pubkey string) error {
 	h := util.GetUserHomeDir()
 	datapath := filepath.Join(h, ".citizen5")
 	dbpath := filepath.Join(datapath, "db")
 	os.MkdirAll(datapath, os.ModePerm)
-	ipfs, cleanup, err := InitIPFSApi(ctx)
+	ipfs, cleanup, err := InitIPFSApi(ctx, privkey, pubkey)
 	if err != nil {
 		return err
 	}
