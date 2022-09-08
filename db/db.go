@@ -25,7 +25,7 @@ import (
 	"github.com/allisterb/citizen5/util"
 )
 
-var log = logging.Logger("db")
+var log = logging.Logger("citizen5/db")
 
 func GetIPFSIdentity(pubkey string) peer.ID {
 	pubb, err := base64.StdEncoding.DecodeString(pubkey)

@@ -40,7 +40,8 @@ var CLI struct {
 }
 
 func init() {
-	logging.SetAllLoggers(logging.LevelInfo)
+	//logging.SetLogLevel("citizen5/main", "info")
+	//logging.SetLogLevel("citizen5/db", "info")
 }
 
 func main() {
@@ -54,10 +55,6 @@ func main() {
 	renderStr, _ := ascii.RenderOpts("citizenfive", options)
 	fmt.Print(renderStr)
 	ctx := kong.Parse(&CLI)
-	if util.Contains(ctx.Args, "--debug") {
-		logging.SetAllLoggers(logging.LevelDebug)
-		log.Info("Debug mode enabled.")
-	}
 	ctx.FatalIfErrorf(ctx.Run(&kong.Context{}))
 }
 
