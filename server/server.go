@@ -60,9 +60,10 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 			log.Infof("REST server shutdown requested: %s", err)
 		}
 	}()
-
+	log.Infof("REST server started on %s", srv.Addr)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
+	log.Infof("citizen5 Nym service provider running on address %s", nym.GetSelfAddressText(conn))
 	<-quit
 
 	srv.Shutdown(ctx)

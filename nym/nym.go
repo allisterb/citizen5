@@ -27,7 +27,7 @@ type SignedCommand struct {
 	Signature []byte
 }
 
-var log = logging.Logger("nym")
+var log = logging.Logger("citizen5/nym")
 
 // request tags
 const sendRequestTag = 0x00
@@ -187,13 +187,13 @@ func SendText(conn *websocket.Conn, address string, message string, withReplySur
 		return err
 	}
 
-	log.Infof("sending '%v' over the mix network to %v...", message, address)
+	log.Infof("sending '%v' over the Nym mixnet to %v...", message, address)
 	return conn.WriteMessage(websocket.TextMessage, []byte(sendRequest))
 }
 
 func SendBinary(conn *websocket.Conn, address []byte, data []byte) error {
 	sendRequest := makeSendRequest(address, data, false)
-	log.Infof("sending binary data of length %s over mix network...", len(data))
+	log.Infof("sending binary data of length %s over Nym mixnet...", len(data))
 	return conn.WriteMessage(websocket.BinaryMessage, sendRequest)
 }
 
@@ -203,12 +203,12 @@ func SendBinaryFile(conn *websocket.Conn, address []byte, filename string) error
 		return err
 	}
 	sendRequest := makeSendRequest(address, readData, false)
-	log.Infof("sending content of file %s over mix network...", filename)
+	log.Infof("sending content of file %s over Nym mixnet...", filename)
 	return conn.WriteMessage(websocket.BinaryMessage, sendRequest)
 }
 
 func Receive(conn *websocket.Conn) ([]byte, error) {
-	log.Infof("waiting to receive a message from the mix network...")
+	log.Infof("waiting to receive a message from the Nym mixnet...")
 	_, receivedMessage, err := conn.ReadMessage()
 	if err != nil {
 		return nil, err
@@ -226,8 +226,9 @@ func ReceiveMessage(conn *websocket.Conn) (Message, error) {
 	msg.RawMessage = r
 	if ResponseIsError(r) {
 		msg.Error = string(r[1:])
-		log.Infof("received error response from Nym mix network: %s", msg.Error)
+		log.Infof("received error response from Nym mixnet: %s", msg.Error)
 	} else if ResponseIsBinary(r) {
+		log.Info("received message from Nym mixnet")
 		payload, surb := parseBinaryResponse(r)
 		msg.Binary = payload
 		msg.Text = string(payload)
@@ -236,6 +237,8 @@ func ReceiveMessage(conn *websocket.Conn) (Message, error) {
 			reply := makeReplyRequest([]byte("ping"), surb)
 			if err = conn.WriteMessage(websocket.BinaryMessage, reply); err != nil {
 				log.Errorf("Could not reply to ping message")
+			} else {
+				log.Info("replied to ping message")
 			}
 		}
 	} else {
@@ -245,7 +248,7 @@ func ReceiveMessage(conn *websocket.Conn) (Message, error) {
 			return msg, nil
 		} else {
 			msg.Json = data
-			log.Info("received JSON message from Nym mix network.")
+			log.Info("received JSON message from Nym mix network")
 		}
 	}
 	return msg, nil

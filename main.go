@@ -48,9 +48,13 @@ var CLI struct {
 func init() {
 	if os.Getenv("GOLOG_LOG_LEVEL") == "info" { // Reduce noise level of some loggers
 		logging.SetLogLevel("dht/RtRefreshManager", "error")
+		logging.SetLogLevel("bitswap", "error")
+		logging.SetLogLevel("connmgr", "error")
 	} else if os.Getenv("GOLOG_LOG_LEVEL") == "" {
 		logging.SetAllLoggers(logging.LevelInfo)
 		logging.SetLogLevel("dht/RtRefreshManager", "error")
+		logging.SetLogLevel("bitswap", "error")
+		logging.SetLogLevel("connmgr", "error")
 	}
 }
 
