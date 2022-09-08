@@ -12,8 +12,9 @@ import (
 type Message struct {
 	RawMessage []byte
 	Binary     []byte
-	Surb       []byte
+	Text       string
 	Json       map[string]interface{}
+	Surb       []byte
 	Error      string
 }
 
@@ -127,7 +128,7 @@ func ResponseIsError(rawResponse []byte) bool {
 	return rawResponse[0] == errorResponseTag
 }
 
-func ResponseIsOK(rawResponse []byte) bool {
+func ResponseIsBinary(rawResponse []byte) bool {
 	return rawResponse[0] == receivedResponseTag
 }
 
@@ -226,9 +227,10 @@ func ReceiveMessage(conn *websocket.Conn) (Message, error) {
 	if ResponseIsError(r) {
 		msg.Error = string(r[1:])
 		log.Infof("received error response from Nym mix network: %s", msg.Error)
-	} else if ResponseIsOK(r) {
+	} else if ResponseIsBinary(r) {
 		payload, surb := parseBinaryResponse(r)
 		msg.Binary = payload
+		msg.Text = string(payload)
 		msg.Surb = surb
 		if len(payload) == 4 && string(payload) == "ping" {
 			reply := makeReplyRequest([]byte("ping"), surb)
@@ -236,13 +238,14 @@ func ReceiveMessage(conn *websocket.Conn) (Message, error) {
 				log.Errorf("Could not reply to ping message")
 			}
 		}
+	} else {
 		var data map[string]interface{}
 		if err = json.Unmarshal(r, &data); err != nil {
 			log.Infof("message is not JSON")
 			return msg, nil
 		} else {
 			msg.Json = data
-			log.Infof("received JSON message from Nym mix network: %v", msg.Json)
+			log.Info("received JSON message from Nym mix network.")
 		}
 	}
 	return msg, nil

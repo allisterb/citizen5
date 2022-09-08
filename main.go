@@ -90,10 +90,10 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 		}
 	}
 	if msg, err := nym.ReceiveMessage(conn); err == nil {
-		if len(msg.Binary) == 4 && string(msg.Binary) == "ping" {
-			log.Infof("Received ping message OK.")
+		if msg.Json != nil && msg.Json["message"] == "ping" {
+			log.Infof("ping %s OK.", l.Address)
 		} else {
-			log.Info(msg.Binary)
+			log.Errorf("Did not receive expected response to ping from %s.", l.Address)
 		}
 	}
 	return nil
