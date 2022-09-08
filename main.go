@@ -92,6 +92,8 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 	if msg, err := nym.ReceiveMessage(conn); err == nil {
 		if len(msg.Binary) == 4 && string(msg.Binary) == "ping" {
 			log.Infof("Received ping message OK.")
+		} else {
+			log.Info(msg.Binary)
 		}
 	}
 	return nil

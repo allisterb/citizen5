@@ -231,7 +231,10 @@ func ReceiveMessage(conn *websocket.Conn) (Message, error) {
 		msg.Binary = payload
 		msg.Surb = surb
 		if len(payload) == 4 && string(payload) == "ping" {
-			SendBinary(conn, surb, []byte("ping"))
+			reply := makeReplyRequest([]byte("ping"), surb)
+			if err = conn.WriteMessage(websocket.BinaryMessage, reply); err != nil {
+				log.Errorf("Could not reply to ping message")
+			}
 		}
 		var data map[string]interface{}
 		if err = json.Unmarshal(r, &data); err != nil {
