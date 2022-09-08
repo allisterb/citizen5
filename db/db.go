@@ -56,13 +56,15 @@ func InitIPFSApi(ctx context.Context, privkey string, pubkey string) (iface.Core
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Infof("IPFS Node created. We are: %s", node.Identity.Pretty())
+	log.Infof("IPFS Node created. We are: %s.", node.Identity.Pretty())
 	c, e := coreapi.NewCoreAPI(node)
 	if e != nil {
 		return nil, nil, e
 	} else {
 		clean := func() {
+			log.Infof("shutting down IPFS node %s...", node.Identity.Pretty())
 			node.Close()
+			log.Infof("IPFS node %s shutdown complete.", node.Identity.Pretty())
 		}
 		return c, clean, e
 	}
@@ -120,7 +122,7 @@ func OpenDocStore(ctx context.Context, db orbitdb.OrbitDB, name string) (orbitdb
 		log.Errorf("could not open OrbitDB document store %s: %v", name, err)
 		return nil, err
 	} else {
-		log.Infof("opened OrbitDB document store %s at IPFS address %s.", name, docs.Address().String())
+		log.Infof("opened OrbitDB document store '%s' at IPFS address %s.", name, docs.Address().String())
 	}
 	return docs, nil
 }

@@ -56,7 +56,7 @@ func main() {
 	options := figlet4go.NewRenderOptions()
 	options.FontColor = []figlet4go.Color{
 		//figlet4go.ColorBlue,
-		figlet4go.ColorGreen,
+		figlet4go.ColorCyan,
 	}
 	renderStr, _ := ascii.RenderOpts("citizenfive", options)
 	fmt.Print(renderStr)
