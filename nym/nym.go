@@ -17,6 +17,15 @@ type Response struct {
 	Error       string
 }
 
+type Command struct {
+}
+
+type SignedCommand struct {
+	Command   Command
+	Identity  string
+	Signature []byte
+}
+
 var log = logging.Logger("nym")
 
 // request tags
@@ -234,4 +243,18 @@ func ReceiveResponse(conn *websocket.Conn) (Response, error) {
 		}
 	}
 	return resp, nil
+}
+
+func ReceiveCommand(conn *websocket.Conn) (bool, Command, error) {
+	c := Command{}
+	resp, err := ReceiveResponse(conn)
+	if err != nil {
+		return false, c, err
+	}
+	if resp.Binary == nil {
+		return false, c, nil
+	} else {
+		return false, c, nil
+
+	}
 }

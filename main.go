@@ -132,5 +132,10 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 		return err
 	}
 	ctx, _ := context.WithCancel(context.Background())
-	return server.Run(ctx, config)
+	conn, err := nym.GetConn(CLI.WSUrl)
+	if err != nil {
+		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
+		return nil
+	}
+	return server.Run(ctx, config, conn)
 }
