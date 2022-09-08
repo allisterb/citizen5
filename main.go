@@ -84,7 +84,7 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 			return err
 		}
 	} else {
-		if err := nym.SendText(conn, l.Address, "ping", false); err != nil {
+		if err := nym.SendText(conn, l.Address, "ping", true); err != nil {
 			log.Errorf("could not send text message to Nym mixnet address %s:%v", l.Address, err)
 			return err
 		}
