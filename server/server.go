@@ -2,7 +2,12 @@ package server
 
 import (
 	"context"
+	"net/http"
+	"time"
 
+	"github.com/fvbock/endless"
+	ginzap "github.com/gin-contrib/zap"
+	"github.com/gin-gonic/gin"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/allisterb/citizen5/crypto"
@@ -26,10 +31,18 @@ func Run(ctx context.Context, config Config) error {
 	}
 	db.OpenDocStore(ctx, orbit, "reports")
 	if err != nil {
-
 		return err
 	}
-
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(ginzap.Ginzap(log.Desugar(), time.RFC3339, true))
+	r.Use(ginzap.RecoveryWithZap(log.Desugar(), true))
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "pong",
+		})
+	})
+	endless.ListenAndServe(":4242", r)
 	orbit.Close()
 	dbcleanup()
 	return nil

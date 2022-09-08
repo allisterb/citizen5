@@ -45,6 +45,7 @@ func initIPFSRepo(ctx context.Context, privkey string, pubkey string) repo.Repo 
 }
 
 func InitIPFSApi(ctx context.Context, privkey string, pubkey string) (iface.CoreAPI, func(), error) {
+	log.Infof("starting IPFS node %s...", crypto.GetIdentity(pubkey).Pretty())
 	node, err := ipfsCore.NewNode(ctx, &ipfsCore.BuildCfg{
 		Online:  true,
 		Routing: libp2p.DHTOption,
@@ -56,7 +57,7 @@ func InitIPFSApi(ctx context.Context, privkey string, pubkey string) (iface.Core
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Infof("IPFS Node created. We are: %s.", node.Identity.Pretty())
+	log.Infof("IPFS node %s started.", node.Identity.Pretty())
 	c, e := coreapi.NewCoreAPI(node)
 	if e != nil {
 		return nil, nil, e
