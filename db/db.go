@@ -2,8 +2,6 @@ package db
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"os"
 	"path/filepath"
 
@@ -19,58 +17,15 @@ import (
 	libp2p "github.com/ipfs/go-ipfs/core/node/libp2p"
 	repo "github.com/ipfs/go-ipfs/repo"
 	iface "github.com/ipfs/interface-go-ipfs-core"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
 
+	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/util"
 )
 
 var log = logging.Logger("citizen5/db")
 
-func GetIPFSIdentity(pubkey string) peer.ID {
-	pubb, err := base64.StdEncoding.DecodeString(pubkey)
-	if err != nil {
-		panic(err)
-	}
-	//priv, err := crypto.UnmarshalPrivateKey(privb)
-	//if err != nil {
-	//	panic(err)
-	//}
-	pub, err := crypto.UnmarshalPublicKey(pubb)
-	if err != nil {
-		panic(err)
-	}
-	id, err := peer.IDFromPublicKey(pub)
-	if err != nil {
-		panic(err)
-	}
-	return id
-}
-
-func GenerateIPFSIdentity() (string, string) {
-	priv, pub, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	privkeyb, err := crypto.MarshalPrivateKey(priv)
-	if err != nil {
-		panic(err)
-	}
-	pubkeyb, err := crypto.MarshalPublicKey(pub)
-	if err != nil {
-		panic(err)
-	}
-	id, err := peer.IDFromPublicKey(pub)
-	if err != nil {
-		panic(err)
-	}
-	log.Infof("generated IPFS identity %s", id.Pretty())
-	return base64.StdEncoding.EncodeToString(privkeyb), base64.StdEncoding.EncodeToString(pubkeyb)
-
-}
-
 func initIPFSRepo(ctx context.Context, privkey string, pubkey string) repo.Repo {
-	pid := GetIPFSIdentity(pubkey)
+	pid := crypto.GetIdentity(pubkey)
 	c := cfg.Config{}
 	c.Pubsub.Enabled = cfg.True
 	c.Bootstrap = []string{
@@ -136,7 +91,7 @@ func CreateDB(ctx context.Context, privkey string, pubkey string) error {
 		log.Errorf("could not create OrbitDB document database: %v", err)
 		return err
 	} else {
-		log.Infof("created OrbitDB document database 'reports' at IPFS address %s", docs.Address().String())
+		log.Infof("created OrbitDB document database 'reports' at IPFS address %s.", docs.Address().String())
 	}
 	d.Close()
 	cleanup()

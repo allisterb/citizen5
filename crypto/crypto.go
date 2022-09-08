@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -11,9 +12,11 @@ import (
 	"os"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-var log = logging.Logger("crypto")
+var log = logging.Logger("citizen5/crypto")
 
 //decodePEMFile reads and decodes generic PEM files.
 func decodePEMFile(filePath string) ([]byte, error) {
@@ -33,7 +36,44 @@ func decodePEMFile(filePath string) ([]byte, error) {
 	return p.Bytes, nil
 }
 
-func GenerateKey(private string, public string) {
+func GetIdentity(pubkey string) peer.ID {
+	pubb, err := base64.StdEncoding.DecodeString(pubkey)
+	if err != nil {
+		panic(err)
+	}
+	pub, err := crypto.UnmarshalPublicKey(pubb)
+	if err != nil {
+		panic(err)
+	}
+	id, err := peer.IDFromPublicKey(pub)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
+func GenerateIdentity() (string, string) {
+	priv, pub, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	privkeyb, err := crypto.MarshalPrivateKey(priv)
+	if err != nil {
+		panic(err)
+	}
+	pubkeyb, err := crypto.MarshalPublicKey(pub)
+	if err != nil {
+		panic(err)
+	}
+	id, err := peer.IDFromPublicKey(pub)
+	if err != nil {
+		panic(err)
+	}
+	log.Infof("generated IPFS identity %s", id.Pretty())
+	return base64.StdEncoding.EncodeToString(privkeyb), base64.StdEncoding.EncodeToString(pubkeyb)
+}
+
+func GenerateED25519Key(private string, public string) {
 	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		log.Fatal(err)
@@ -81,7 +121,7 @@ func GenerateKey(private string, public string) {
 
 //GetPrivateKey reads the private key from input file and
 //returns the initialized PrivateKey.
-func GetPrivateKey(privateKey string) (ed25519.PrivateKey, error) {
+func GetED25519PrivateKey(privateKey string) (ed25519.PrivateKey, error) {
 	p, _ := decodePEMFile(privateKey)
 	key, err := x509.ParsePKCS8PrivateKey(p)
 	if err != nil {
@@ -96,7 +136,7 @@ func GetPrivateKey(privateKey string) (ed25519.PrivateKey, error) {
 
 //GetPublicKey reads the public key from input file and
 //returns the initialized PublicKey.
-func GetPublicKey(publicKey string) (ed25519.PublicKey, error) {
+func GetED25519PublicKey(publicKey string) (ed25519.PublicKey, error) {
 	p, _ := decodePEMFile(publicKey)
 	key, err := x509.ParsePKIXPublicKey(p)
 	if err != nil {
@@ -109,14 +149,14 @@ func GetPublicKey(publicKey string) (ed25519.PublicKey, error) {
 	return ed25519.PublicKey(edKey), nil
 }
 
-func Sign(p ed25519.PrivateKey, data []byte) (string, error) {
+func ED25519Sign(p ed25519.PrivateKey, data []byte) (string, error) {
 	signature := ed25519.Sign(ed25519.PrivateKey(p), data)
 	return hex.EncodeToString(signature), nil
 }
 
 //Sign reads the input file and compute the ED25519 signature
 //using the private key.
-func SignFile(p ed25519.PrivateKey, path string) (string, error) {
+func ED25519SignFile(p ed25519.PrivateKey, path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -126,13 +166,13 @@ func SignFile(p ed25519.PrivateKey, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return Sign(p, buf)
+	return ED25519Sign(p, buf)
 }
 
 //Verify checks that input signature is valid. That is, if
 //input file was signed by private key corresponding to input
 //public key.
-func Verify(signature string, p ed25519.PublicKey, data []byte) (bool, error) {
+func ED25519Verify(signature string, p ed25519.PublicKey, data []byte) (bool, error) {
 	byteSign, err := hex.DecodeString(signature)
 	if err != nil {
 		return false, err
@@ -141,7 +181,7 @@ func Verify(signature string, p ed25519.PublicKey, data []byte) (bool, error) {
 	return ok, nil
 }
 
-func VerifyFile(signature string, p ed25519.PublicKey, file string) (bool, error) {
+func ED25519VerifyFile(signature string, p ed25519.PublicKey, file string) (bool, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return false, err
@@ -151,5 +191,5 @@ func VerifyFile(signature string, p ed25519.PublicKey, file string) (bool, error
 	if err != nil {
 		return false, err
 	}
-	return Verify(signature, p, buf)
+	return ED25519Verify(signature, p, buf)
 }

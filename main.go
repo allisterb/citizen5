@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/alecthomas/kong"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mbndr/figlet4go"
 
+	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/db"
 	"github.com/allisterb/citizen5/nym"
 	"github.com/allisterb/citizen5/server"
@@ -28,7 +30,10 @@ type InitCmd struct {
 type InitServerCmd struct {
 }
 
-var log = logging.Logger("main")
+type ServerCmd struct {
+}
+
+var log = logging.Logger("citizen5/main")
 
 // Command-line arguments
 var CLI struct {
@@ -37,11 +42,13 @@ var CLI struct {
 	Ping       PingCmd       `cmd:"" help:"Send a test message to a Nym mixnet address."`
 	Init       InitCmd       `cmd:"" help:"Initialize the citizen5 client."`
 	InitServer InitServerCmd `cmd:"" help:"Initialize the citizen5 server."`
+	Server     ServerCmd     `cmd:"" help:"Start the citizen5 server."`
 }
 
 func init() {
-	//logging.SetLogLevel("citizen5/main", "info")
-	//logging.SetLogLevel("citizen5/db", "info")
+	if os.Getenv("GOLOG_LOG_LEVEL") == "info" { // Reduce noise level of some loggers
+		logging.SetLogLevel("dht/RtRefreshManager", "error")
+	}
 }
 
 func main() {
@@ -92,7 +99,7 @@ func (l *InitCmd) Run(ctx *kong.Context) error {
 
 func (s *InitServerCmd) Run(clictx *kong.Context) error {
 	ctx, _ := context.WithCancel(context.Background())
-	priv, pub := db.GenerateIPFSIdentity()
+	priv, pub := crypto.GenerateIdentity()
 	err := db.CreateDB(ctx, priv, pub)
 	if err != nil {
 		log.Errorf("error creating OrbitDB database: %v", err)
@@ -105,7 +112,7 @@ func (s *InitServerCmd) Run(clictx *kong.Context) error {
 		log.Errorf("error creating server configuration file: %v", err)
 		return nil
 	}
-	log.Infof("IPFS node public key is %s", db.GetIPFSIdentity(pub))
+	log.Infof("IPFS node public key is %s.", crypto.GetIdentity(pub))
 	log.Infof("citizen5 server initialized.")
 	return nil
 }
