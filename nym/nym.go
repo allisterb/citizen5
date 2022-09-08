@@ -9,12 +9,12 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-type Response struct {
-	RawResponse []byte
-	Binary      []byte
-	BinarySurb  []byte
-	Json        map[string]interface{}
-	Error       string
+type Message struct {
+	RawMessage []byte
+	Binary     []byte
+	Surb       []byte
+	Json       map[string]interface{}
+	Error      string
 }
 
 type Command struct {
@@ -127,16 +127,12 @@ func ResponseIsError(rawResponse []byte) bool {
 	return rawResponse[0] == errorResponseTag
 }
 
-func ResponseIsBinary(rawResponse []byte) bool {
+func ResponseIsOK(rawResponse []byte) bool {
 	return rawResponse[0] == receivedResponseTag
 }
 
 func ResponseIsSelfAddress(rawResponse []byte) bool {
 	return rawResponse[0] == selfAddressResponseTag
-}
-
-func ResponseIsText(rawResponse []byte) bool {
-	return !ResponseIsError(rawResponse) && !ResponseIsBinary(rawResponse) && !ResponseIsSelfAddress(rawResponse)
 }
 
 func GetSelfAddressText(conn *websocket.Conn) string {
@@ -194,7 +190,13 @@ func SendText(conn *websocket.Conn, address string, message string, withReplySur
 	return conn.WriteMessage(websocket.TextMessage, []byte(sendRequest))
 }
 
-func SendBinary(conn *websocket.Conn, address []byte, filename string) error {
+func SendBinary(conn *websocket.Conn, address []byte, data []byte) error {
+	sendRequest := makeSendRequest(address, data, false)
+	log.Infof("sending binary data of length %s over mix network...", len(data))
+	return conn.WriteMessage(websocket.BinaryMessage, sendRequest)
+}
+
+func SendBinaryFile(conn *websocket.Conn, address []byte, filename string) error {
 	readData, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
@@ -213,48 +215,45 @@ func Receive(conn *websocket.Conn) ([]byte, error) {
 	return receivedMessage, nil
 }
 
-func ReceiveResponse(conn *websocket.Conn) (Response, error) {
-	resp := Response{}
+func ReceiveMessage(conn *websocket.Conn) (Message, error) {
+	msg := Message{}
 	r, err := Receive(conn)
 	if err != nil {
 		log.Errorf("error receiving message from Nym WebSocket connection: %v", err)
-		return resp, err
+		return msg, err
 	}
-	resp.RawResponse = r
+	msg.RawMessage = r
 	if ResponseIsError(r) {
-		resp.Error = string(r[1:])
-		log.Infof("received error response from mix network: %s", resp.Error)
-	} else if ResponseIsBinary(r) {
-		a, b := parseBinaryResponse(r)
-		resp.Binary = a
-		resp.BinarySurb = b
-		log.Infof("received binary response of length %v from mix network", len(resp.Binary))
-		if resp.BinarySurb != nil {
-			log.Infof("reply surb is %v", resp.BinarySurb)
+		msg.Error = string(r[1:])
+		log.Infof("received error response from Nym mix network: %s", msg.Error)
+	} else if ResponseIsOK(r) {
+		payload, surb := parseBinaryResponse(r)
+		msg.Binary = payload
+		msg.Surb = surb
+		if len(payload) == 4 && string(payload) == "ping" {
+			SendBinary(conn, surb, []byte("ping"))
 		}
-	} else if ResponseIsText(r) {
 		var data map[string]interface{}
 		if err = json.Unmarshal(r, &data); err != nil {
-			log.Errorf("error unmarshalling JSON from response: %v", err)
-			return resp, err
+			log.Infof("message is not JSON")
+			return msg, nil
 		} else {
-			resp.Json = data
-			log.Infof("received JSON response from mix network: %v", resp.Json)
+			msg.Json = data
+			log.Infof("received JSON message from Nym mix network: %v", msg.Json)
 		}
 	}
-	return resp, nil
+	return msg, nil
 }
 
 func ReceiveCommand(conn *websocket.Conn) (bool, Command, error) {
 	c := Command{}
-	resp, err := ReceiveResponse(conn)
+	msg, err := ReceiveMessage(conn)
 	if err != nil {
 		return false, c, err
 	}
-	if resp.Binary == nil {
+	if msg.Json == nil {
 		return false, c, nil
 	} else {
 		return false, c, nil
-
 	}
 }

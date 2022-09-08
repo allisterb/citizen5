@@ -48,6 +48,9 @@ var CLI struct {
 func init() {
 	if os.Getenv("GOLOG_LOG_LEVEL") == "info" { // Reduce noise level of some loggers
 		logging.SetLogLevel("dht/RtRefreshManager", "error")
+	} else if os.Getenv("GOLOG_LOG_LEVEL") == "" {
+		logging.SetAllLoggers(logging.LevelInfo)
+		logging.SetLogLevel("dht/RtRefreshManager", "error")
 	}
 }
 
@@ -76,18 +79,20 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 		log.Info("pinging own client address...")
 	}
 	if l.Binary {
-		if err := nym.SendBinary(conn, nym.GetSelfAddressBinary(conn), "main.go"); err != nil {
+		if err := nym.SendBinaryFile(conn, nym.GetSelfAddressBinary(conn), "main.go"); err != nil {
 			log.Errorf("could not send binary message to Nym mixnet address %s:%v", l.Address, err)
 			return err
 		}
 	} else {
-		if err := nym.SendText(conn, l.Address, "hello", false); err != nil {
+		if err := nym.SendText(conn, l.Address, "ping", false); err != nil {
 			log.Errorf("could not send text message to Nym mixnet address %s:%v", l.Address, err)
 			return err
 		}
 	}
-	if _, err := nym.ReceiveResponse(conn); err == nil {
-		log.Infof("Received ping message OK.")
+	if msg, err := nym.ReceiveMessage(conn); err == nil {
+		if len(msg.Binary) == 4 && string(msg.Binary) == "ping" {
+			log.Infof("Received ping message OK.")
+		}
 	}
 	return nil
 }
