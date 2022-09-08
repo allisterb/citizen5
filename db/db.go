@@ -97,3 +97,30 @@ func CreateDB(ctx context.Context, privkey string, pubkey string) error {
 	cleanup()
 	return nil
 }
+
+func OpenDB(ctx context.Context, privkey string, pubkey string) (orbitdb.OrbitDB, func(), error) {
+	log.Infof("opening OrbitDB database at local path %s...", util.DbDir)
+	ipfs, cleanup, err := InitIPFSApi(ctx, privkey, pubkey)
+	if err != nil {
+		return nil, nil, err
+	}
+	d, e := orbitdb.NewOrbitDB(ctx, ipfs, &orbitdb.NewOrbitDBOptions{
+		Directory: &util.DbDir,
+		Logger:    log.Desugar(),
+	})
+	if e != nil {
+		return nil, nil, err
+	}
+	return d, cleanup, nil
+}
+
+func OpenDocStore(ctx context.Context, db orbitdb.OrbitDB, name string) (orbitdb.DocumentStore, error) {
+	docs, err := db.Docs(ctx, name, nil)
+	if err != nil {
+		log.Errorf("could not open OrbitDB document store %s: %v", name, err)
+		return nil, err
+	} else {
+		log.Infof("opened OrbitDB document store %s at IPFS address %s.", name, docs.Address().String())
+	}
+	return docs, nil
+}

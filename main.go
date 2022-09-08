@@ -55,9 +55,8 @@ func main() {
 	ascii := figlet4go.NewAsciiRender()
 	options := figlet4go.NewRenderOptions()
 	options.FontColor = []figlet4go.Color{
+		//figlet4go.ColorBlue,
 		figlet4go.ColorGreen,
-		figlet4go.ColorYellow,
-		figlet4go.ColorCyan,
 	}
 	renderStr, _ := ascii.RenderOpts("citizenfive", options)
 	fmt.Print(renderStr)
@@ -78,12 +77,12 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 	}
 	if l.Binary {
 		if err := nym.SendBinary(conn, nym.GetSelfAddressBinary(conn), "main.go"); err != nil {
-			log.Errorf("could not send binary message to Nym address %s:%v", l.Address, err)
+			log.Errorf("could not send binary message to Nym mixnet address %s:%v", l.Address, err)
 			return err
 		}
 	} else {
 		if err := nym.SendText(conn, l.Address, "hello", false); err != nil {
-			log.Errorf("could not send text message to Nym address %s:%v", l.Address, err)
+			log.Errorf("could not send text message to Nym mixnet address %s:%v", l.Address, err)
 			return err
 		}
 	}
@@ -115,4 +114,23 @@ func (s *InitServerCmd) Run(clictx *kong.Context) error {
 	log.Infof("IPFS node public key is %s.", crypto.GetIdentity(pub))
 	log.Infof("citizen5 server initialized.")
 	return nil
+}
+
+func (s *ServerCmd) Run(clictx *kong.Context) error {
+	if !util.PathExists(util.ServerConfigFile) || !util.PathExists(util.DbDir) {
+		log.Errorf("The server config file %s or database directory %s does not exist. Initialize the server first.", util.ServerConfigFile, util.DbDir)
+		return fmt.Errorf("server config file or database directory not found")
+	}
+	c, err := ioutil.ReadFile(util.ServerConfigFile)
+	if err != nil {
+		log.Errorf("Could not read data from server configuration file: %v", err)
+		return err
+	}
+	var config server.Config
+	if json.Unmarshal(c, &config) != nil {
+		log.Errorf("Could not read JSON data from server configuration file: %v", err)
+		return err
+	}
+	ctx, _ := context.WithCancel(context.Background())
+	return server.Run(ctx, config)
 }
