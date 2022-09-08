@@ -65,7 +65,7 @@ func InitIPFSApi(ctx context.Context, privkey string, pubkey string) (iface.Core
 		clean := func() {
 			log.Infof("shutting down IPFS node %s...", node.Identity.Pretty())
 			node.Close()
-			log.Infof("IPFS node %s shutdown complete.", node.Identity.Pretty())
+			log.Infof("IPFS node %s shutdown completed.", node.Identity.Pretty())
 		}
 		return c, clean, e
 	}

@@ -3,10 +3,11 @@ package server
 import (
 	"context"
 	"net/http"
+	"os"
+	"os/signal"
 	"time"
 
 	orbitdb "berty.tech/go-orbit-db"
-	"github.com/fvbock/endless"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -41,7 +42,6 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
@@ -49,9 +49,26 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 	})
 	r.Use(ginzap.Ginzap(log.Desugar(), time.RFC3339Nano, true))
 	r.Use(ginzap.RecoveryWithZap(log.Desugar(), true))
-	endless.ListenAndServe(":4242", r)
+	srv := &http.Server{
+		Addr:    ":4242",
+		Handler: r,
+	}
+
+	go func() {
+		log.Infof("starting REST server on %s...", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil {
+			log.Infof("REST server shutdown requested: %s", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+
+	srv.Shutdown(ctx)
 	orbit.Close()
 	dbcleanup()
+	log.Info("server shutdown completed.")
 	return nil
 }
 
