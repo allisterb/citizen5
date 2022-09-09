@@ -155,6 +155,7 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
 		return nil
 	}
+	defer conn.Close()
 	return server.Run(ctx, config, conn)
 }
 
@@ -171,6 +172,16 @@ func (r *SubmitReportCmd) Run(clictx *kong.Context) error {
 	var report models.Report
 	if json.Unmarshal(c, &report) != nil {
 		log.Errorf("Could not read JSON data from report metadata file: %v", err)
+		return err
+	}
+	conn, err := nym.GetConn(CLI.WSUrl)
+	if err != nil {
+		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
+		return nil
+	}
+	err = nym.SendText(conn, r.Address, string(c), true)
+	if err != nil {
+		log.Errorf("Could not send report : %v", err)
 		return err
 	}
 	return nil
