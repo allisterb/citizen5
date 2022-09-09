@@ -192,6 +192,10 @@ func (r *SubmitReportCmd) Run(clictx *kong.Context) error {
 	}
 	report.Reporter = config.Pubkey
 	report.DateSubmitted = time.Now().String()
+	if c, err = json.Marshal(&report); err != nil {
+		log.Errorf("Could not read JSON data from report metadata file: %v", err)
+		return err
+	}
 	conn, err := nym.GetConn(CLI.WSUrl)
 	if err != nil {
 		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
