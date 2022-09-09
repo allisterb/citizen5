@@ -1,0 +1,10 @@
+{
+	"Id": "",
+	"Reporter": "",
+	"Title": "execution",
+	"Description": "Prisoners executed",
+	"Location": {
+		"Lat":  46.35,
+		"Long": 32.35
+	}
+}
