@@ -47,10 +47,15 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
+	r.GET("/reports", func(c *gin.Context) {
+		allFilter := func(d interface{}) (bool, error) { return true, nil }
+		reports, err := datastores.Reports.Query(ctx, allFilter)
+		if err != nil {
+			c.Status(500)
+		} else {
+			c.JSON(http.StatusOK, reports)
+		}
+
 	})
 	r.Use(ginzap.Ginzap(log.Desugar(), time.RFC3339Nano, true))
 	r.Use(ginzap.RecoveryWithZap(log.Desugar(), true))
