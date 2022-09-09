@@ -14,6 +14,7 @@ import (
 
 	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/db"
+	"github.com/allisterb/citizen5/models"
 	"github.com/allisterb/citizen5/nym"
 	"github.com/allisterb/citizen5/server"
 	"github.com/allisterb/citizen5/util"
@@ -33,16 +34,22 @@ type InitServerCmd struct {
 type ServerCmd struct {
 }
 
+type SubmitReportCmd struct {
+	Address string `arg:"" name:"file" help:"The mixnet address of the citizen5 service provider."`
+	File    string `arg:"" name:"file" help:"Submit a report on citizen5 using metadata stored in this file."`
+}
+
 var log = logging.Logger("citizen5/main")
 
 // Command-line arguments
 var CLI struct {
-	Debug      bool          `help:"Enable debug mode."`
-	WSUrl      string        `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
-	Ping       PingCmd       `cmd:"" help:"Send a test message to a Nym mixnet address."`
-	Init       InitCmd       `cmd:"" help:"Initialize the citizen5 client."`
-	InitServer InitServerCmd `cmd:"" help:"Initialize the citizen5 server."`
-	Server     ServerCmd     `cmd:"" help:"Start the citizen5 server."`
+	Debug        bool            `help:"Enable debug mode."`
+	WSUrl        string          `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
+	Ping         PingCmd         `cmd:"" help:"Send a test message to a Nym mixnet address."`
+	Init         InitCmd         `cmd:"" help:"Initialize the citizen5 client."`
+	InitServer   InitServerCmd   `cmd:"" help:"Initialize the citizen5 server."`
+	Server       ServerCmd       `cmd:"" help:"Start the citizen5 server."`
+	SubmitReport SubmitReportCmd `cmd:"" help:"Submit a report to citizen5."`
 }
 
 func init() {
@@ -149,4 +156,22 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 		return nil
 	}
 	return server.Run(ctx, config, conn)
+}
+
+func (r *SubmitReportCmd) Run(clictx *kong.Context) error {
+	if !util.PathExists(r.File) {
+		log.Errorf("The report metadata file %s does not exist. Initialize the server first.", r.File)
+		return nil
+	}
+	c, err := ioutil.ReadFile(r.File)
+	if err != nil {
+		log.Errorf("Could not read data from report metadata file: %v", err)
+		return err
+	}
+	var report models.Report
+	if json.Unmarshal(c, &report) != nil {
+		log.Errorf("Could not read JSON data from report metadata file: %v", err)
+		return err
+	}
+	return nil
 }

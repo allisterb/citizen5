@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "main.go",
-            "args": ["server"]
+            "args": ["submit-report", "9AHYnkRfNGubu1q349j7aw1K2mftvGmpY1sBhQAds2x.EgE8BYNbPAzMnyoaBRuYiXhZoxVpvy6pADTVk9i9DwqE@FuAyv8r9qkbiycp5pVAeYt3dpCjnteG4H5TDXmNw3NUC", "models/files/report.json"]
         }
     ]
 }

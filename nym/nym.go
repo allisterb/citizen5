@@ -248,7 +248,7 @@ func ReceiveMessage(conn *websocket.Conn) (Message, error) {
 			return msg, nil
 		} else {
 			msg.Json = data
-			log.Info("received JSON message from Nym mix network")
+			log.Infof("received JSON message from Nym mix network: %s", string(r))
 		}
 	}
 	return msg, nil
