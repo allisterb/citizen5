@@ -5,9 +5,10 @@ type Location struct {
 	Long float32
 }
 type Report struct {
-	Id          string
-	Reporter    string
-	Name        string
-	Description string
-	Location    Location
+	Id            string
+	DateSubmitted string
+	Reporter      string
+	Title         string
+	Description   string
+	Location      Location
 }

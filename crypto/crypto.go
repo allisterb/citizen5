@@ -69,7 +69,7 @@ func GenerateIdentity() (string, string) {
 	if err != nil {
 		panic(err)
 	}
-	log.Infof("generated IPFS identity %s", id.Pretty())
+	log.Infof("generated identity %s", id.Pretty())
 	return base64.StdEncoding.EncodeToString(privkeyb), base64.StdEncoding.EncodeToString(pubkeyb)
 }
 

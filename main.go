@@ -7,11 +7,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/alecthomas/kong"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mbndr/figlet4go"
 
+	"github.com/allisterb/citizen5/client"
 	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/db"
 	"github.com/allisterb/citizen5/models"
@@ -110,7 +112,16 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 	return nil
 }
 
-func (l *InitCmd) Run(ctx *kong.Context) error {
+func (c *InitCmd) Run(clictx *kong.Context) error {
+	priv, pub := crypto.GenerateIdentity()
+	clientConfig := server.Config{Pubkey: pub, PrivKey: priv}
+	data, _ := json.MarshalIndent(clientConfig, "", " ")
+	err := ioutil.WriteFile(filepath.Join(util.GetUserHomeDir(), ".citizen5", "client.json"), data, 0644)
+	if err != nil {
+		log.Errorf("error creating client configuration file: %v", err)
+		return nil
+	}
+	log.Infof("citizen5 client initialized.")
 	return nil
 }
 
@@ -160,6 +171,11 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 }
 
 func (r *SubmitReportCmd) Run(clictx *kong.Context) error {
+	config, err := client.GetClientConfig()
+	if err != nil {
+		return nil
+	}
+
 	if !util.PathExists(r.File) {
 		log.Errorf("The report metadata file %s does not exist. Initialize the server first.", r.File)
 		return nil
@@ -174,6 +190,8 @@ func (r *SubmitReportCmd) Run(clictx *kong.Context) error {
 		log.Errorf("Could not read JSON data from report metadata file: %v", err)
 		return err
 	}
+	report.Reporter = config.Pubkey
+	report.DateSubmitted = time.Now().String()
 	conn, err := nym.GetConn(CLI.WSUrl)
 	if err != nil {
 		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
