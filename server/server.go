@@ -7,12 +7,12 @@ import (
 	"os/signal"
 	"time"
 
-	orbitdb "berty.tech/go-orbit-db"
 	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/allisterb/citizen5/cmd"
 	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/db"
 	"github.com/allisterb/citizen5/nym"
@@ -37,7 +37,13 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 	if err != nil {
 		return err
 	}
-	go Monitor(ctx, conn, reports)
+
+	datastores := db.DataStores{
+		DB:      orbit,
+		Reports: reports,
+	}
+
+	go Monitor(ctx, conn, datastores)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -70,12 +76,12 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 	return nil
 }
 
-func Monitor(ctx context.Context, conn *websocket.Conn, reports orbitdb.DocumentStore) error {
+func Monitor(ctx context.Context, conn *websocket.Conn, stores db.DataStores) error {
 	log.Info("citizen5 Nym service provider running")
 	for {
-		_, _, err := nym.ReceiveCommand(conn)
-		if err != nil {
-			return err
+		msg, err := nym.ReceiveMessage(conn)
+		if err == nil {
+			cmd.HandleRemoteCommand(ctx, msg.Binary, stores)
 		}
 	}
 }

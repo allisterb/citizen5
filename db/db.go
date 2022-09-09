@@ -22,6 +22,11 @@ import (
 	"github.com/allisterb/citizen5/util"
 )
 
+type DataStores struct {
+	DB      orbitdb.OrbitDB
+	Reports orbitdb.DocumentStore
+}
+
 var log = logging.Logger("citizen5/db")
 
 func initIPFSRepo(ctx context.Context, privkey string, pubkey string) repo.Repo {
