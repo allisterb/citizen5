@@ -65,6 +65,7 @@ func init() {
 		logging.SetLogLevel("bitswap", "error")
 		logging.SetLogLevel("connmgr", "error")
 	}
+
 }
 
 func main() {
