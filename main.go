@@ -17,6 +17,7 @@ import (
 	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/db"
 	"github.com/allisterb/citizen5/models"
+	"github.com/allisterb/citizen5/nlu"
 	"github.com/allisterb/citizen5/nym"
 	"github.com/allisterb/citizen5/server"
 	"github.com/allisterb/citizen5/util"
@@ -41,6 +42,10 @@ type SubmitReportCmd struct {
 	File    string `arg:"" name:"file" help:"Submit a report on citizen5 using metadata stored in this file."`
 }
 
+type NLUCmd struct {
+	File string `arg:"" name:"file" help:"Submit a report on citizen5 using metadata stored in this file."`
+}
+
 var log = logging.Logger("citizen5/main")
 
 // Command-line arguments
@@ -52,6 +57,7 @@ var CLI struct {
 	InitServer   InitServerCmd   `cmd:"" help:"Initialize the citizen5 server."`
 	Server       ServerCmd       `cmd:"" help:"Start the citizen5 server."`
 	SubmitReport SubmitReportCmd `cmd:"" help:"Submit a report to citizen5."`
+	NLU          NLUCmd          `cmd:"" help:"Run NLU models on a plaintext file."`
 }
 
 func init() {
@@ -65,7 +71,6 @@ func init() {
 		logging.SetLogLevel("bitswap", "error")
 		logging.SetLogLevel("connmgr", "error")
 	}
-
 }
 
 func main() {
@@ -207,5 +212,11 @@ func (r *SubmitReportCmd) Run(clictx *kong.Context) error {
 		log.Errorf("Could not send report : %v", err)
 		return err
 	}
+	return nil
+}
+
+func (c *NLUCmd) Run(clictx *kong.Context) error {
+	ctx, _ := context.WithCancel(context.Background())
+	nlu.AnalyzeFile(ctx, c.File)
 	return nil
 }
