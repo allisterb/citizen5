@@ -24,25 +24,22 @@ type BearerToken struct {
 
 var log = logging.Logger("citizen5/nlu")
 var Token = BearerToken{}
-var EAIUser = ""
-var EAIPass = ""
+var EAIUser = os.Getenv("EAI_USER")
+var EAIPass = os.Getenv("EAI_PASS")
 var PiiClient *pii.Client
 
 func init() {
-	EAIUser = os.Getenv("EAI_USER")
-	EAIPass = os.Getenv("EAI_PASS")
-	c, err := pii.NewClient("https://nlapi.expertapi.")
+	c, err := pii.NewClient("https://nlapi.expert.ai/v2/")
 	if err != nil {
 		log.Errorf("Could not create expert.ai PII REST client: %v", err)
 		panic("Could not init nlu package.")
 	}
 	PiiClient = c
-
 }
 
 func RefreshToken() error {
 	last := time.Since(Token.LastRefreshed)
-	if Token.LastRefreshed.IsZero() || last.Hours() > 4 {
+	if Token.LastRefreshed.IsZero() || last.Hours() > 12 {
 		token, err := GetAuthToken()
 		if err != nil {
 			log.Errorf("Could not refresh expert.ai authorization token: %v", err)
@@ -72,7 +69,7 @@ func GetAuthToken() (string, error) {
 	} else if resp.StatusCode != 200 {
 		err = fmt.Errorf("expert.ai API returned status code %v", resp.StatusCode)
 		log.Errorf("could not get authorization token from expert.ai API: %v", err)
-		return "", nil
+		return "", err
 	}
 	defer resp.Body.Close()
 	t, err := io.ReadAll(resp.Body)
@@ -83,26 +80,39 @@ func GetAuthToken() (string, error) {
 	return string(t), nil
 }
 
-func GetPii(ctx context.Context, text string) (string, error) {
+func GetPii(ctx context.Context, text string) (pii.Response, error) {
+	var data pii.Response
 	if err := RefreshToken(); err != nil {
-		return "", err
+		return data, err
 	}
-	req := pii.PostDetectPiiLanguageJSONRequestBody{}
+	req := pii.PostDetectPiiLanguageJSONRequestBody{Document: &struct {
+		Text *string "json:\"text,omitempty\""
+	}{}}
 	req.Document.Text = &text
 	bearerAuthProvider, err := securityprovider.NewSecurityProviderBearerToken(Token.Token)
 	if err != nil {
-		return "", err
+		return data, err
 	}
 	resp, err := PiiClient.PostDetectPiiLanguage(ctx, "en", req, bearerAuthProvider.Intercept)
-	return resp.TLS.ServerName, nil
+	if err != nil {
+		return data, err
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return data, err
+	}
+	err = json.Unmarshal(b, &data)
+	return data, err
 }
 
-func AnalyzeFile(ctx context.Context, file string) error {
+func GetPiiForFile(ctx context.Context, file string) (pii.Response, error) {
+	var data pii.Response
 	f, err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Errorf("Could not read file %v", err)
-		return err
+		return data, err
 	}
-	GetPii(ctx, string(f))
-	return nil
+	return GetPii(ctx, string(f))
+
 }
