@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/deepmap/oapi-codegen/pkg/securityprovider"
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/allisterb/citizen5/expertai/nlapi"
 	"github.com/allisterb/citizen5/expertai/pii"
 )
 
@@ -27,6 +27,7 @@ var Token = BearerToken{}
 var EAIUser = os.Getenv("EAI_USER")
 var EAIPass = os.Getenv("EAI_PASS")
 var PiiClient *pii.Client
+var NLApiClient *nlapi.Client
 
 func init() {
 	c, err := pii.NewClient("https://nlapi.expert.ai/v2/")
@@ -35,6 +36,12 @@ func init() {
 		panic("Could not init nlu package.")
 	}
 	PiiClient = c
+	a, err := nlapi.NewClient("https://nlapi.expert.ai/v2/")
+	if err != nil {
+		log.Errorf("Could not create expert.ai NL API REST client: %v", err)
+		panic("Could not init nlu package.")
+	}
+	NLApiClient = a
 }
 
 func RefreshToken() error {
@@ -106,13 +113,32 @@ func GetPii(ctx context.Context, text string) (pii.Response, error) {
 	return data, err
 }
 
-func GetPiiForFile(ctx context.Context, file string) (pii.Response, error) {
-	var data pii.Response
-	f, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Errorf("Could not read file %v", err)
+func Analyze(ctx context.Context, text string) (nlapi.AnalyzeResponse, error) {
+	var data nlapi.AnalyzeResponse
+	if err := RefreshToken(); err != nil {
 		return data, err
 	}
-	return GetPii(ctx, string(f))
+	//req := nlapi.AnalysisRequest{Document: &struct {
+	//	Text *string "json:\"text,omitempty\""
+	//}{}}
 
+	req := nlapi.PostAnalyzeContextLanguageAnalysisJSONBody{Document: &nlapi.Document{Text: &text}}
+	//PostAnalyzeContextLanguageAnalysisJSONBod
+	//req2 = nlapi
+	req.Document.Text = &text
+	bearerAuthProvider, err := securityprovider.NewSecurityProviderBearerToken(Token.Token)
+	if err != nil {
+		return data, err
+	}
+	resp, err := NLApiClient.PostAnalyzeContextLanguageAnalysis(ctx, "standard", "en", "", req, bearerAuthProvider.Intercept) //PiiClient.PostDetectPiiLanguage(ctx, "en", req, bearerAuthProvider.Intercept)
+	if err != nil {
+		return data, err
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return data, err
+	}
+	err = json.Unmarshal(b, &data)
+	return data, err
 }

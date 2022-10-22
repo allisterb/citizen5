@@ -222,7 +222,7 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 		log.Errorf("Could not read file %v", err)
 		return err
 	}
-	p, err := nlu.GetPii(ctx, string(f))
+	p, err := nlu.Analyze(ctx, string(f))
 	if p.Success == nil || !*p.Success {
 		log.Errorf("Could not get PII from expert.ai API for file %v: %v", c.File, err)
 		return err
