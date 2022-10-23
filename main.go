@@ -223,13 +223,6 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 		log.Errorf("Could not read file %v", err)
 		return err
 	}
-	if c.Analysis == "full" {
-		p, err := nlu.Analyze(ctx, string(f))
-		if p.Success == nil || !*p.Success {
-			log.Errorf("Could not get PII from expert.ai API for file %v: %v", c.File, err)
-			return err
-		}
-	}
 	switch c.Analysis {
 	case "pii":
 		p, err := nlu.Pii(ctx, string(f))
@@ -240,7 +233,7 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 		j, _ := json.MarshalIndent(p.Data.Knowledge, "", "  ")
 		log.Info(string(j))
 
-	case "relations", "phrases", "full":
+	case "relations", "lemmas", "full":
 		p, err := nlu.Analyze(ctx, string(f))
 		if p.Success == nil || !*p.Success {
 			log.Errorf("Could not get full analysis from expert.ai API for file %v: %v", c.File, err)
@@ -251,7 +244,7 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 			j, _ := json.MarshalIndent(p.Data.Relations, "", "  ")
 			log.Infof("Printing relations in %v", c.File)
 			log.Info(string(j))
-		case "phrases":
+		case "lemmas":
 			j, _ := json.MarshalIndent(p.Data.MainLemmas, "", "  ")
 			log.Infof("Printing relations in %v", c.File)
 			log.Info(string(j))
@@ -260,6 +253,15 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 			log.Infof("Printing relations in %v", c.File)
 			log.Info(string(j))
 		}
+	case "hatespeech":
+		p, err := nlu.HateSpeech(ctx, string(f))
+		if p.Success == nil || !*p.Success {
+			log.Errorf("Could not hate speech analysis from expert.ai API for file %v: %v", c.File, err)
+			return err
+		}
+		j, _ := json.MarshalIndent(p.Data, "", "  ")
+		log.Infof("Printing hate speech analysis %v", c.File)
+		log.Info(string(j))
 
 	default:
 		err := fmt.Errorf("unknown analysis: %v", c.Analysis)

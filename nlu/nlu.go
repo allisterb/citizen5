@@ -13,6 +13,7 @@ import (
 	"github.com/deepmap/oapi-codegen/pkg/securityprovider"
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/allisterb/citizen5/expertai/hatespeech"
 	"github.com/allisterb/citizen5/expertai/nlapi"
 	"github.com/allisterb/citizen5/expertai/pii"
 )
@@ -28,6 +29,7 @@ var EAIUser = os.Getenv("EAI_USER")
 var EAIPass = os.Getenv("EAI_PASS")
 var PiiClient *pii.Client
 var NLApiClient *nlapi.Client
+var HateSpeechClient *hatespeech.Client
 
 func init() {
 	c, err := pii.NewClient("https://nlapi.expert.ai/v2/")
@@ -42,6 +44,12 @@ func init() {
 		panic("Could not init nlu package.")
 	}
 	NLApiClient = a
+	h, err := hatespeech.NewClient("https://nlapi.expert.ai/v2/")
+	if err != nil {
+		log.Errorf("Could not create expert.ai hate speech API REST client: %v", err)
+		panic("Could not init nlu package.")
+	}
+	HateSpeechClient = h
 }
 
 func RefreshToken() error {
@@ -87,6 +95,30 @@ func GetAuthToken() (string, error) {
 	return string(t), nil
 }
 
+func Analyze(ctx context.Context, text string) (nlapi.AnalyzeResponse, error) {
+	var data nlapi.AnalyzeResponse
+	if err := RefreshToken(); err != nil {
+		return data, err
+	}
+	req := nlapi.PostAnalyzeContextLanguageAnalysisJSONBody{Document: &nlapi.Document{Text: &text}}
+	req.Document.Text = &text
+	bearerAuthProvider, err := securityprovider.NewSecurityProviderBearerToken(Token.Token)
+	if err != nil {
+		return data, err
+	}
+	resp, err := NLApiClient.PostAnalyzeContextLanguageAnalysis(ctx, "standard", "en", "", req, bearerAuthProvider.Intercept)
+	if err != nil {
+		return data, err
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return data, err
+	}
+	err = json.Unmarshal(b, &data)
+	return data, err
+}
+
 func Pii(ctx context.Context, text string) (pii.Response, error) {
 	var data pii.Response
 	if err := RefreshToken(); err != nil {
@@ -113,18 +145,17 @@ func Pii(ctx context.Context, text string) (pii.Response, error) {
 	return data, err
 }
 
-func Analyze(ctx context.Context, text string) (nlapi.AnalyzeResponse, error) {
-	var data nlapi.AnalyzeResponse
+func HateSpeech(ctx context.Context, text string) (hatespeech.HateSpeechDetectResponse, error) {
+	var data hatespeech.HateSpeechDetectResponse
 	if err := RefreshToken(); err != nil {
 		return data, err
 	}
-	req := nlapi.PostAnalyzeContextLanguageAnalysisJSONBody{Document: &nlapi.Document{Text: &text}}
-	req.Document.Text = &text
+	req := hatespeech.PostDetectHateSpeechLanguageJSONRequestBody{Document: &hatespeech.Document{Text: &text}}
 	bearerAuthProvider, err := securityprovider.NewSecurityProviderBearerToken(Token.Token)
 	if err != nil {
 		return data, err
 	}
-	resp, err := NLApiClient.PostAnalyzeContextLanguageAnalysis(ctx, "standard", "en", "", req, bearerAuthProvider.Intercept)
+	resp, err := HateSpeechClient.PostDetectHateSpeechLanguage(ctx, "en", req, bearerAuthProvider.Intercept)
 	if err != nil {
 		return data, err
 	}
