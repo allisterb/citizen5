@@ -87,7 +87,7 @@ func GetAuthToken() (string, error) {
 	return string(t), nil
 }
 
-func GetPii(ctx context.Context, text string) (pii.Response, error) {
+func Pii(ctx context.Context, text string) (pii.Response, error) {
 	var data pii.Response
 	if err := RefreshToken(); err != nil {
 		return data, err
@@ -118,19 +118,13 @@ func Analyze(ctx context.Context, text string) (nlapi.AnalyzeResponse, error) {
 	if err := RefreshToken(); err != nil {
 		return data, err
 	}
-	//req := nlapi.AnalysisRequest{Document: &struct {
-	//	Text *string "json:\"text,omitempty\""
-	//}{}}
-
 	req := nlapi.PostAnalyzeContextLanguageAnalysisJSONBody{Document: &nlapi.Document{Text: &text}}
-	//PostAnalyzeContextLanguageAnalysisJSONBod
-	//req2 = nlapi
 	req.Document.Text = &text
 	bearerAuthProvider, err := securityprovider.NewSecurityProviderBearerToken(Token.Token)
 	if err != nil {
 		return data, err
 	}
-	resp, err := NLApiClient.PostAnalyzeContextLanguageAnalysis(ctx, "standard", "en", "", req, bearerAuthProvider.Intercept) //PiiClient.PostDetectPiiLanguage(ctx, "en", req, bearerAuthProvider.Intercept)
+	resp, err := NLApiClient.PostAnalyzeContextLanguageAnalysis(ctx, "standard", "en", "", req, bearerAuthProvider.Intercept)
 	if err != nil {
 		return data, err
 	}

@@ -43,7 +43,8 @@ type SubmitReportCmd struct {
 }
 
 type NLUCmd struct {
-	File string `arg:"" name:"file" help:"Submit a report on citizen5 using metadata stored in this file."`
+	File     string `arg:"" name:"file" help:"Analyze text stored in a file."`
+	Analysis string `arg:"" name:"analysis" help:"The kind of analysis to perform." default:"full"`
 }
 
 var log = logging.Logger("citizen5/main")
@@ -222,12 +223,48 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 		log.Errorf("Could not read file %v", err)
 		return err
 	}
-	p, err := nlu.Analyze(ctx, string(f))
-	if p.Success == nil || !*p.Success {
-		log.Errorf("Could not get PII from expert.ai API for file %v: %v", c.File, err)
+	if c.Analysis == "full" {
+		p, err := nlu.Analyze(ctx, string(f))
+		if p.Success == nil || !*p.Success {
+			log.Errorf("Could not get PII from expert.ai API for file %v: %v", c.File, err)
+			return err
+		}
+	}
+	switch c.Analysis {
+	case "pii":
+		p, err := nlu.Pii(ctx, string(f))
+		if p.Success == nil || !*p.Success {
+			log.Errorf("Could not get PII from expert.ai API for file %v: %v", c.File, err)
+			return err
+		}
+		j, _ := json.MarshalIndent(p.Data.Knowledge, "", "  ")
+		log.Info(string(j))
+
+	case "relations", "phrases", "full":
+		p, err := nlu.Analyze(ctx, string(f))
+		if p.Success == nil || !*p.Success {
+			log.Errorf("Could not get full analysis from expert.ai API for file %v: %v", c.File, err)
+			return err
+		}
+		switch c.Analysis {
+		case "relations":
+			j, _ := json.MarshalIndent(p.Data.Relations, "", "  ")
+			log.Infof("Printing relations in %v", c.File)
+			log.Info(string(j))
+		case "phrases":
+			j, _ := json.MarshalIndent(p.Data.MainLemmas, "", "  ")
+			log.Infof("Printing relations in %v", c.File)
+			log.Info(string(j))
+		case "full":
+			j, _ := json.MarshalIndent(p.Data, "", "  ")
+			log.Infof("Printing relations in %v", c.File)
+			log.Info(string(j))
+		}
+
+	default:
+		err := fmt.Errorf("unknown analysis: %v", c.Analysis)
+		log.Errorf("%v", err)
 		return err
 	}
-	j, _ := json.MarshalIndent(p.Data.Knowledge, "", "  ")
-	log.Info(string(j))
 	return nil
 }
