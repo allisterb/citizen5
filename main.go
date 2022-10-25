@@ -24,22 +24,20 @@ import (
 )
 
 type PingCmd struct {
-	Address string `arg:"" name:"address" help:"Nym mixnet address to send test message to." default:""`
-	Binary  bool   `help:"Send a binary file as the test message."`
+	Address string `arg:"" name:"address" help:"Nym mixnet address to send ping message to." default:""`
+	Binary  bool   `help:"Send a binary file as the ping message."`
 }
 
-type InitCmd struct {
-}
+type InitCmd struct{}
 
-type InitServerCmd struct {
-}
+type InitServerCmd struct{}
 
-type ServerCmd struct {
-}
+type ServerCmd struct{}
 
-type SubmitReportCmd struct {
-	Address string `arg:"" name:"file" help:"The mixnet address of the citizen5 service provider."`
-	File    string `arg:"" name:"file" help:"Submit a report on citizen5 using metadata stored in this file."`
+type SubmitCmd struct {
+	Address string `arg:"" name:"address" help:"The mixnet address of the citizen5 service provider."`
+	Type    string `arg:"" name:"type" help:"The type of submission."`
+	File    string `arg:"" name:"file" help:"Submit to citizen5 using metadata stored in this file."`
 }
 
 type NLUCmd struct {
@@ -51,14 +49,14 @@ var log = logging.Logger("citizen5/main")
 
 // Command-line arguments
 var CLI struct {
-	Debug        bool            `help:"Enable debug mode."`
-	WSUrl        string          `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
-	Ping         PingCmd         `cmd:"" help:"Send a test message to a Nym mixnet address."`
-	Init         InitCmd         `cmd:"" help:"Initialize the citizen5 client."`
-	InitServer   InitServerCmd   `cmd:"" help:"Initialize the citizen5 server."`
-	Server       ServerCmd       `cmd:"" help:"Start the citizen5 server."`
-	SubmitReport SubmitReportCmd `cmd:"" help:"Submit a report to citizen5."`
-	NLU          NLUCmd          `cmd:"" help:"Run NLU models on a plaintext file."`
+	Debug      bool          `help:"Enable debug mode."`
+	WSUrl      string        `help:"The URL of the Nym websocket client." default:"ws://localhost:1977"`
+	Ping       PingCmd       `cmd:"" help:"Send a test message to a Nym mixnet address."`
+	Init       InitCmd       `cmd:"" help:"Initialize the citizen5 client."`
+	InitServer InitServerCmd `cmd:"" help:"Initialize the citizen5 server."`
+	Server     ServerCmd     `cmd:"" help:"Start the citizen5 server."`
+	Submit     SubmitCmd     `cmd:"" help:"Submit an item to citizen5."`
+	NLU        NLUCmd        `cmd:"" help:"Run NLU models on a plaintext file."`
 }
 
 func init() {
@@ -78,7 +76,6 @@ func main() {
 	ascii := figlet4go.NewAsciiRender()
 	options := figlet4go.NewRenderOptions()
 	options.FontColor = []figlet4go.Color{
-		//figlet4go.ColorBlue,
 		figlet4go.ColorCyan,
 	}
 	renderStr, _ := ascii.RenderOpts("citizenfive", options)
@@ -177,32 +174,45 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 	return server.Run(ctx, config, conn)
 }
 
-func (r *SubmitReportCmd) Run(clictx *kong.Context) error {
+func (r *SubmitCmd) Run(clictx *kong.Context) error {
+	switch r.Type {
+	case "report":
+		break
+	default:
+		err := fmt.Errorf("unknown submission type: %v", r.Type)
+		return err
+	}
 	config, err := client.GetClientConfig()
 	if err != nil {
 		return nil
 	}
 
 	if !util.PathExists(r.File) {
-		log.Errorf("The report metadata file %s does not exist. Initialize the server first.", r.File)
+		log.Errorf("The metadata file %s does not exist.", r.File)
 		return nil
 	}
 	c, err := ioutil.ReadFile(r.File)
 	if err != nil {
-		log.Errorf("Could not read data from report metadata file: %v", err)
+		log.Errorf("Could not read data from file: %v", err)
 		return err
 	}
-	var report models.Report
-	if json.Unmarshal(c, &report) != nil {
-		log.Errorf("Could not read JSON data from report metadata file: %v", err)
-		return err
+	switch r.Type {
+	case "report":
+		var report models.Report
+		if json.Unmarshal(c, &report) != nil {
+			log.Errorf("Could not read JSON data from metadata file: %v", err)
+			return err
+		}
+		report.Reporter = config.Pubkey
+		report.DateSubmitted = time.Now().String()
+		if c, err = json.Marshal(&report); err != nil {
+			log.Errorf("Could not create JSON data for submission: %v", err)
+			return err
+		}
+	default:
+		panic(fmt.Errorf("unknown submission type: %v", r.Type))
 	}
-	report.Reporter = config.Pubkey
-	report.DateSubmitted = time.Now().String()
-	if c, err = json.Marshal(&report); err != nil {
-		log.Errorf("Could not read JSON data from report metadata file: %v", err)
-		return err
-	}
+
 	conn, err := nym.GetConn(CLI.WSUrl)
 	if err != nil {
 		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
@@ -210,7 +220,7 @@ func (r *SubmitReportCmd) Run(clictx *kong.Context) error {
 	}
 	err = nym.SendText(conn, r.Address, string(c), true)
 	if err != nil {
-		log.Errorf("Could not send report : %v", err)
+		log.Errorf("Could not send %v data : %v", r.Type, err)
 		return err
 	}
 	return nil
@@ -236,7 +246,7 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 	case "relations", "lemmas", "full":
 		p, err := nlu.Analyze(ctx, string(f))
 		if p.Success == nil || !*p.Success {
-			log.Errorf("Could not get full analysis from expert.ai API for file %v: %v", c.File, err)
+			log.Errorf("Could not get call expert.ai NLU API for file %v: %v", c.File, err)
 			return err
 		}
 		switch c.Analysis {
@@ -246,11 +256,11 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 			log.Info(string(j))
 		case "lemmas":
 			j, _ := json.MarshalIndent(p.Data.MainLemmas, "", "  ")
-			log.Infof("Printing relations in %v", c.File)
+			log.Infof("Printing main lemmas in %v", c.File)
 			log.Info(string(j))
 		case "full":
 			j, _ := json.MarshalIndent(p.Data, "", "  ")
-			log.Infof("Printing relations in %v", c.File)
+			log.Infof("Printing full analysis for %v", c.File)
 			log.Info(string(j))
 		}
 	case "hatespeech":

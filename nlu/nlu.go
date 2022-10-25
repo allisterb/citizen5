@@ -46,7 +46,7 @@ func init() {
 	NLApiClient = a
 	h, err := hatespeech.NewClient("https://nlapi.expert.ai/v2/")
 	if err != nil {
-		log.Errorf("Could not create expert.ai hate speech API REST client: %v", err)
+		log.Errorf("Could not create expert.ai hate speech REST client: %v", err)
 		panic("Could not init nlu package.")
 	}
 	HateSpeechClient = h
