@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "main.go",
-            "args": ["nlu", "data/test.txt", "phrases"]
+            "args": ["submit", "1234", "witness-report", "data/witness-report.json"]
         }
     ]
 }

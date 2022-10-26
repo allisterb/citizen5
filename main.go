@@ -176,7 +176,7 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 
 func (r *SubmitCmd) Run(clictx *kong.Context) error {
 	switch r.Type {
-	case "report":
+	case "report", "witness-report":
 		break
 	default:
 		err := fmt.Errorf("unknown submission type: %v", r.Type)
@@ -186,7 +186,7 @@ func (r *SubmitCmd) Run(clictx *kong.Context) error {
 	if err != nil {
 		return nil
 	}
-
+	client.Config = config
 	if !util.PathExists(r.File) {
 		log.Errorf("The metadata file %s does not exist.", r.File)
 		return nil
@@ -196,6 +196,7 @@ func (r *SubmitCmd) Run(clictx *kong.Context) error {
 		log.Errorf("Could not read data from file: %v", err)
 		return err
 	}
+	ctx, _ := context.WithCancel(context.Background())
 	switch r.Type {
 	case "report":
 		var report models.Report
@@ -209,6 +210,8 @@ func (r *SubmitCmd) Run(clictx *kong.Context) error {
 			log.Errorf("Could not create JSON data for submission: %v", err)
 			return err
 		}
+	case "witness-report":
+		return client.SubmitWitnessReport(ctx, c)
 	default:
 		panic(fmt.Errorf("unknown submission type: %v", r.Type))
 	}
