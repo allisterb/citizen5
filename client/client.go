@@ -12,7 +12,7 @@ import (
 
 	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/models"
-	"github.com/allisterb/citizen5/nlu"
+
 	"github.com/allisterb/citizen5/nym"
 	"github.com/allisterb/citizen5/util"
 )
@@ -42,18 +42,11 @@ func GetClientConfig() (models.Config, error) {
 func SubmitWitnessReport(ctx context.Context, conn *websocket.Conn, address string, data []byte) error {
 	var report models.WitnessReport
 	if err := json.Unmarshal(data, &report); err != nil {
-		log.Errorf("could not read witness report JSON data from file: %v", err)
+		log.Errorf("could not read witness report JSON data: %v", err)
 		return err
 	}
 	report.Reporter = crypto.GetIdentity(Config.Pubkey).Pretty()
 	report.DateSubmitted = time.Now().String()
-	report.Analysis = models.NLUAnalysis{}
-	p, err := nlu.Pii(ctx, report.Description)
-	if err != nil {
-		log.Errorf("Error getting PII info: %v", err)
-	} else {
-		report.Analysis.Pii = p
-	}
 	if c, err := json.Marshal(&report); err != nil {
 		log.Errorf("Could not create witness report JSON data for submission: %v", err)
 		return err
@@ -70,13 +63,6 @@ func SubmitMediaReport(ctx context.Context, conn *websocket.Conn, address string
 	}
 	report.Reporter = crypto.GetIdentity(Config.Pubkey).Pretty()
 	report.DateSubmitted = time.Now().String()
-	report.Analysis = models.NLUAnalysis{}
-	hs, err := nlu.HateSpeech(ctx, report.Text)
-	if err != nil {
-		log.Errorf("%v", err)
-	} else {
-		report.Analysis.HateSpeech = hs
-	}
 	if c, err := json.Marshal(&report); err != nil {
 		log.Errorf("Could not create media report JSON data for submission: %v", err)
 		return err

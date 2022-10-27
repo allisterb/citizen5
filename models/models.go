@@ -36,7 +36,7 @@ type WitnessReport struct {
 	DateSubmitted    string
 	Reporter         string
 	Title            string
-	Description      string
+	Text             string
 	Date             string
 	Location         Location
 	GroupResponsible string
