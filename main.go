@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/alecthomas/kong"
 	logging "github.com/ipfs/go-log/v2"
@@ -16,7 +15,6 @@ import (
 	"github.com/allisterb/citizen5/client"
 	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/db"
-	"github.com/allisterb/citizen5/models"
 	"github.com/allisterb/citizen5/nlu"
 	"github.com/allisterb/citizen5/nym"
 	"github.com/allisterb/citizen5/server"
@@ -176,7 +174,7 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 
 func (r *SubmitCmd) Run(clictx *kong.Context) error {
 	switch r.Type {
-	case "report", "witness-report":
+	case "report", "witness-report", "media-report":
 		break
 	default:
 		err := fmt.Errorf("unknown submission type: %v", r.Type)
@@ -188,8 +186,8 @@ func (r *SubmitCmd) Run(clictx *kong.Context) error {
 	}
 	client.Config = config
 	if !util.PathExists(r.File) {
-		log.Errorf("The metadata file %s does not exist.", r.File)
-		return nil
+		err = fmt.Errorf("the file %s does not exist", r.File)
+		return err
 	}
 	c, err := ioutil.ReadFile(r.File)
 	if err != nil {
@@ -197,36 +195,19 @@ func (r *SubmitCmd) Run(clictx *kong.Context) error {
 		return err
 	}
 	ctx, _ := context.WithCancel(context.Background())
-	switch r.Type {
-	case "report":
-		var report models.Report
-		if json.Unmarshal(c, &report) != nil {
-			log.Errorf("Could not read JSON data from metadata file: %v", err)
-			return err
-		}
-		report.Reporter = config.Pubkey
-		report.DateSubmitted = time.Now().String()
-		if c, err = json.Marshal(&report); err != nil {
-			log.Errorf("Could not create JSON data for submission: %v", err)
-			return err
-		}
-	case "witness-report":
-		return client.SubmitWitnessReport(ctx, c)
-	default:
-		panic(fmt.Errorf("unknown submission type: %v", r.Type))
-	}
-
 	conn, err := nym.GetConn(CLI.WSUrl)
 	if err != nil {
 		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
-		return nil
-	}
-	err = nym.SendText(conn, r.Address, string(c), true)
-	if err != nil {
-		log.Errorf("Could not send %v data : %v", r.Type, err)
 		return err
 	}
-	return nil
+	switch r.Type {
+	case "witness-report":
+		return client.SubmitWitnessReport(ctx, conn, r.Address, c)
+	case "media-report":
+		return client.SubmitMediaReport(ctx, conn, r.Address, c)
+	default:
+		panic(fmt.Errorf("unknown submission type: %v", r.Type))
+	}
 }
 
 func (c *NLUCmd) Run(clictx *kong.Context) error {

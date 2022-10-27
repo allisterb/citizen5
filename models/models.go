@@ -16,7 +16,7 @@ type Location struct {
 	Long float32
 }
 
-type NLAnalysis struct {
+type NLUAnalysis struct {
 	Pii        pii.Response
 	NL         nlapi.AnalyzeResponse
 	HateSpeech hatespeech.HateSpeechDetectResponse
@@ -40,5 +40,17 @@ type WitnessReport struct {
 	Date             string
 	Location         Location
 	GroupResponsible string
-	Analysis         NLAnalysis
+	Analysis         NLUAnalysis
+}
+
+type MediaReport struct {
+	Id               string
+	DateSubmitted    string
+	Reporter         string
+	Type             string
+	Url              string
+	Text             string
+	Author           string
+	GroupResponsible string
+	Analysis         NLUAnalysis
 }

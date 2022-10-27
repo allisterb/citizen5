@@ -7,18 +7,19 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/gorilla/websocket"
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/allisterb/citizen5/models"
 	"github.com/allisterb/citizen5/nlu"
+	"github.com/allisterb/citizen5/nym"
 	"github.com/allisterb/citizen5/util"
-
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("citizen5/client")
 var Config models.Config
 
 func GetClientConfig() (models.Config, error) {
-
 	if !util.PathExists(util.ClientConfigFile) {
 		log.Errorf("the client config file %s does not exist. Initialize the client first", util.ClientConfigFile)
 		return models.Config{}, fmt.Errorf("client config file not found")
@@ -37,7 +38,7 @@ func GetClientConfig() (models.Config, error) {
 	}
 }
 
-func SubmitWitnessReport(ctx context.Context, data []byte) error {
+func SubmitWitnessReport(ctx context.Context, conn *websocket.Conn, address string, data []byte) error {
 	var report models.WitnessReport
 	if err := json.Unmarshal(data, &report); err != nil {
 		log.Errorf("could not read witness report JSON data from file: %v", err)
@@ -45,16 +46,40 @@ func SubmitWitnessReport(ctx context.Context, data []byte) error {
 	}
 	report.Reporter = Config.Pubkey
 	report.DateSubmitted = time.Now().String()
-	report.Analysis = models.NLAnalysis{}
+	report.Analysis = models.NLUAnalysis{}
 	hs, err := nlu.HateSpeech(ctx, report.Description)
 	if err != nil {
 		log.Errorf("%v", err)
 	} else {
 		report.Analysis.HateSpeech = hs
 	}
-	if _, err := json.Marshal(&report); err != nil {
-		log.Errorf("Could not create JSON data for submission: %v", err)
+	if c, err := json.Marshal(&report); err != nil {
+		log.Errorf("Could not create witness report JSON data for submission: %v", err)
+		return err
+	} else {
+		return nym.SendText(conn, address, string(c), true)
+	}
+}
+
+func SubmitMediaReport(ctx context.Context, conn *websocket.Conn, address string, data []byte) error {
+	var report models.MediaReport
+	if err := json.Unmarshal(data, &report); err != nil {
+		log.Errorf("could not read media report JSON data from file: %v", err)
 		return err
 	}
-	return nil
+	report.Reporter = Config.Pubkey
+	report.DateSubmitted = time.Now().String()
+	report.Analysis = models.NLUAnalysis{}
+	hs, err := nlu.HateSpeech(ctx, report.Text)
+	if err != nil {
+		log.Errorf("%v", err)
+	} else {
+		report.Analysis.HateSpeech = hs
+	}
+	if c, err := json.Marshal(&report); err != nil {
+		log.Errorf("Could not create media report JSON data for submission: %v", err)
+		return err
+	} else {
+		return nym.SendText(conn, address, string(c), true)
+	}
 }
