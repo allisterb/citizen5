@@ -48,11 +48,11 @@ func SubmitWitnessReport(ctx context.Context, conn *websocket.Conn, address stri
 	report.Reporter = crypto.GetIdentity(Config.Pubkey).Pretty()
 	report.DateSubmitted = time.Now().String()
 	report.Analysis = models.NLUAnalysis{}
-	hs, err := nlu.HateSpeech(ctx, report.Description)
+	p, err := nlu.Pii(ctx, report.Description)
 	if err != nil {
-		log.Errorf("%v", err)
+		log.Errorf("Error getting PII info: %v", err)
 	} else {
-		report.Analysis.HateSpeech = hs
+		report.Analysis.Pii = p
 	}
 	if c, err := json.Marshal(&report); err != nil {
 		log.Errorf("Could not create witness report JSON data for submission: %v", err)

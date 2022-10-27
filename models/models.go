@@ -22,7 +22,7 @@ type NLUAnalysis struct {
 	HateSpeech hatespeech.HateSpeechDetectResponse
 }
 
-type Report struct {
+type VictimReport struct {
 	Id            string
 	DateSubmitted string
 	Reporter      string
@@ -44,13 +44,24 @@ type WitnessReport struct {
 }
 
 type MediaReport struct {
-	Id               string
-	DateSubmitted    string
-	Reporter         string
-	Type             string
-	Url              string
-	Text             string
-	Author           string
-	GroupResponsible string
-	Analysis         NLUAnalysis
+	DateSubmitted string
+	Reporter      string
+	Text          string
+	// D.C properties
+	Contributor string
+	Coverage    string
+	Creator     string
+	Date        string
+	Description string
+	Format      string
+	Identifier  string
+	Language    string
+	Publisher   string
+	Relation    string
+	Rights      string
+	Source      string
+	Subject     string
+	Title       string
+	Type        string
+	Analysis    NLUAnalysis
 }

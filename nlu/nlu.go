@@ -125,6 +125,7 @@ func Analyze(ctx context.Context, text string) (nlapi.AnalyzeResponse, error) {
 
 func Pii(ctx context.Context, text string) (pii.Response, error) {
 	var data pii.Response
+	log.Infof("calling expert.ai PII API...")
 	if err := RefreshToken(); err != nil {
 		return data, err
 	}
@@ -146,6 +147,7 @@ func Pii(ctx context.Context, text string) (pii.Response, error) {
 		return data, err
 	}
 	err = json.Unmarshal(b, &data)
+	log.Infof("calling expert.ai hate speech API completed")
 	return data, err
 }
 
@@ -173,4 +175,8 @@ func HateSpeech(ctx context.Context, text string) (hatespeech.HateSpeechDetectRe
 	log.Infof("call expert.ai hate speech API completed")
 	return data, err
 
+}
+
+func FindRelation(ctx context.Context, nl nlapi.AnalyzeDocument) error {
+	return nil
 }

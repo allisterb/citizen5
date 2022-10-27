@@ -226,16 +226,20 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 			log.Errorf("could not get PII from expert.ai API for file %v: %v", c.File, err)
 			return err
 		}
-		j, _ := json.MarshalIndent(p.Data.Knowledge, "", "  ")
+		j, _ := json.MarshalIndent(p.Data.Extractions, "", "  ")
 		log.Info(string(j))
 
-	case "relations", "lemmas", "full":
+	case "topics", "relations", "lemmas", "mainphrases", "full":
 		p, err := nlu.Analyze(ctx, string(f))
 		if p.Success == nil || !*p.Success {
 			log.Errorf("could not get call expert.ai NLU API for file %v: %v", c.File, err)
 			return err
 		}
 		switch c.Analysis {
+		case "topics":
+			j, _ := json.MarshalIndent(p.Data.Topics, "", "  ")
+			log.Infof("printing topics in %v", c.File)
+			log.Info(string(j))
 		case "relations":
 			j, _ := json.MarshalIndent(p.Data.Relations, "", "  ")
 			log.Infof("printing relations in %v", c.File)
@@ -243,6 +247,10 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 		case "lemmas":
 			j, _ := json.MarshalIndent(p.Data.MainLemmas, "", "  ")
 			log.Infof("printing main lemmas in %v", c.File)
+			log.Info(string(j))
+		case "mainphrases":
+			j, _ := json.MarshalIndent(p.Data.MainPhrases, "", "  ")
+			log.Infof("printing main phrases in %v", c.File)
 			log.Info(string(j))
 		case "full":
 			j, _ := json.MarshalIndent(p.Data, "", "  ")
