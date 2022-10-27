@@ -34,20 +34,20 @@ var HateSpeechClient *hatespeech.Client
 func init() {
 	c, err := pii.NewClient("https://nlapi.expert.ai/v2/")
 	if err != nil {
-		log.Errorf("Could not create expert.ai PII REST client: %v", err)
-		panic("Could not init nlu package.")
+		log.Errorf("could not create expert.ai PII REST client: %v", err)
+		panic("could not init nlu package")
 	}
 	PiiClient = c
 	a, err := nlapi.NewClient("https://nlapi.expert.ai/v2/")
 	if err != nil {
-		log.Errorf("Could not create expert.ai NL API REST client: %v", err)
-		panic("Could not init nlu package.")
+		log.Errorf("could not create expert.ai NL API REST client: %v", err)
+		panic("could not init nlu package")
 	}
 	NLApiClient = a
 	h, err := hatespeech.NewClient("https://nlapi.expert.ai/v2/")
 	if err != nil {
-		log.Errorf("Could not create expert.ai hate speech REST client: %v", err)
-		panic("Could not init nlu package.")
+		log.Errorf("could not create expert.ai hate speech REST client: %v", err)
+		panic("could not init nlu package")
 	}
 	HateSpeechClient = h
 }
@@ -55,13 +55,15 @@ func init() {
 func RefreshToken() error {
 	last := time.Since(Token.LastRefreshed)
 	if Token.LastRefreshed.IsZero() || last.Hours() > 12 {
+		log.Infof("refreshing expert.ai authorization token...")
 		token, err := GetAuthToken()
 		if err != nil {
-			log.Errorf("Could not refresh expert.ai authorization token: %v", err)
+			log.Errorf("could not refresh expert.ai authorization token: %v", err)
 			return err
 		}
 		Token.Token = token
 		Token.LastRefreshed = time.Now()
+		log.Infof("expert.ai authorization token refreshed")
 		return nil
 	} else {
 		return nil
@@ -77,21 +79,23 @@ func GetAuthToken() (string, error) {
 	bodyReader := bytes.NewReader(b)
 	req, _ := http.NewRequest(http.MethodPost, "https://developer.expert.ai/oauth2/token", bodyReader)
 	req.Header["Content-Type"] = append(req.Header["Content-Type"], "application/json; charset=utf-8")
+	log.Infof("getting expert.ai authorization token...")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Errorf("could not get authorization token from expert.ai API: %v", err)
+		log.Errorf("could not get expert.ai authorization token from expert.ai API: %v", err)
 		return "", err
 	} else if resp.StatusCode != 200 {
 		err = fmt.Errorf("expert.ai API returned status code %v", resp.StatusCode)
-		log.Errorf("could not get authorization token from expert.ai API: %v", err)
+		log.Errorf("could not get expert.ai authorization token from expert.ai API: %v", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 	t, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Errorf("could not read authorization token from response: %v", err)
+		log.Errorf("could not read expert.ai authorization token from response: %v", err)
 		return "", err
 	}
+	log.Infof("get expert.ai authorization token completed")
 	return string(t), nil
 }
 
@@ -147,6 +151,7 @@ func Pii(ctx context.Context, text string) (pii.Response, error) {
 
 func HateSpeech(ctx context.Context, text string) (hatespeech.HateSpeechDetectResponse, error) {
 	var data hatespeech.HateSpeechDetectResponse
+	log.Infof("calling expert.ai hate speech API...")
 	if err := RefreshToken(); err != nil {
 		return data, err
 	}
@@ -165,5 +170,7 @@ func HateSpeech(ctx context.Context, text string) (hatespeech.HateSpeechDetectRe
 		return data, err
 	}
 	err = json.Unmarshal(b, &data)
+	log.Infof("call expert.ai hate speech API completed")
 	return data, err
+
 }

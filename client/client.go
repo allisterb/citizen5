@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/models"
 	"github.com/allisterb/citizen5/nlu"
 	"github.com/allisterb/citizen5/nym"
@@ -44,7 +45,7 @@ func SubmitWitnessReport(ctx context.Context, conn *websocket.Conn, address stri
 		log.Errorf("could not read witness report JSON data from file: %v", err)
 		return err
 	}
-	report.Reporter = Config.Pubkey
+	report.Reporter = crypto.GetIdentity(Config.Pubkey).Pretty()
 	report.DateSubmitted = time.Now().String()
 	report.Analysis = models.NLUAnalysis{}
 	hs, err := nlu.HateSpeech(ctx, report.Description)
@@ -67,7 +68,7 @@ func SubmitMediaReport(ctx context.Context, conn *websocket.Conn, address string
 		log.Errorf("could not read media report JSON data from file: %v", err)
 		return err
 	}
-	report.Reporter = Config.Pubkey
+	report.Reporter = crypto.GetIdentity(Config.Pubkey).Pretty()
 	report.DateSubmitted = time.Now().String()
 	report.Analysis = models.NLUAnalysis{}
 	hs, err := nlu.HateSpeech(ctx, report.Text)

@@ -15,6 +15,7 @@ import (
 	"github.com/allisterb/citizen5/client"
 	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/db"
+	"github.com/allisterb/citizen5/models"
 	"github.com/allisterb/citizen5/nlu"
 	"github.com/allisterb/citizen5/nym"
 	"github.com/allisterb/citizen5/server"
@@ -108,7 +109,7 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 		if msg.Json != nil && msg.Json["message"] == "ping" {
 			log.Infof("ping %s OK.", l.Address)
 		} else {
-			log.Errorf("Did not receive expected response to ping from %s.", l.Address)
+			log.Errorf("did not receive expected response to ping from %s.", l.Address)
 		}
 	}
 	return nil
@@ -116,13 +117,14 @@ func (l *PingCmd) Run(ctx *kong.Context) error {
 
 func (c *InitCmd) Run(clictx *kong.Context) error {
 	priv, pub := crypto.GenerateIdentity()
-	clientConfig := server.Config{Pubkey: pub, PrivKey: priv}
+	clientConfig := models.Config{Pubkey: pub, PrivKey: priv}
 	data, _ := json.MarshalIndent(clientConfig, "", " ")
 	err := ioutil.WriteFile(filepath.Join(util.GetUserHomeDir(), ".citizen5", "client.json"), data, 0644)
 	if err != nil {
 		log.Errorf("error creating client configuration file: %v", err)
 		return nil
 	}
+	log.Infof("client identity is %s.", crypto.GetIdentity(pub).Pretty())
 	log.Infof("citizen5 client initialized.")
 	return nil
 }
@@ -142,7 +144,7 @@ func (s *InitServerCmd) Run(clictx *kong.Context) error {
 		log.Errorf("error creating server configuration file: %v", err)
 		return nil
 	}
-	log.Infof("IPFS node public key is %s.", crypto.GetIdentity(pub))
+	log.Infof("server identity is %s.", crypto.GetIdentity(pub).Pretty())
 	log.Infof("citizen5 server initialized.")
 	return nil
 }
@@ -154,12 +156,12 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 	}
 	c, err := ioutil.ReadFile(util.ServerConfigFile)
 	if err != nil {
-		log.Errorf("Could not read data from server configuration file: %v", err)
+		log.Errorf("could not read data from server configuration file: %v", err)
 		return err
 	}
 	var config server.Config
 	if json.Unmarshal(c, &config) != nil {
-		log.Errorf("Could not read JSON data from server configuration file: %v", err)
+		log.Errorf("could not read JSON data from server configuration file: %v", err)
 		return err
 	}
 	ctx, _ := context.WithCancel(context.Background())
@@ -191,7 +193,7 @@ func (r *SubmitCmd) Run(clictx *kong.Context) error {
 	}
 	c, err := ioutil.ReadFile(r.File)
 	if err != nil {
-		log.Errorf("Could not read data from file: %v", err)
+		log.Errorf("could not read data from file: %v", err)
 		return err
 	}
 	ctx, _ := context.WithCancel(context.Background())
@@ -214,14 +216,14 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 	ctx, _ := context.WithCancel(context.Background())
 	f, err := ioutil.ReadFile(c.File)
 	if err != nil {
-		log.Errorf("Could not read file %v", err)
+		log.Errorf("could not read file %v", err)
 		return err
 	}
 	switch c.Analysis {
 	case "pii":
 		p, err := nlu.Pii(ctx, string(f))
 		if p.Success == nil || !*p.Success {
-			log.Errorf("Could not get PII from expert.ai API for file %v: %v", c.File, err)
+			log.Errorf("could not get PII from expert.ai API for file %v: %v", c.File, err)
 			return err
 		}
 		j, _ := json.MarshalIndent(p.Data.Knowledge, "", "  ")
@@ -230,21 +232,21 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 	case "relations", "lemmas", "full":
 		p, err := nlu.Analyze(ctx, string(f))
 		if p.Success == nil || !*p.Success {
-			log.Errorf("Could not get call expert.ai NLU API for file %v: %v", c.File, err)
+			log.Errorf("could not get call expert.ai NLU API for file %v: %v", c.File, err)
 			return err
 		}
 		switch c.Analysis {
 		case "relations":
 			j, _ := json.MarshalIndent(p.Data.Relations, "", "  ")
-			log.Infof("Printing relations in %v", c.File)
+			log.Infof("printing relations in %v", c.File)
 			log.Info(string(j))
 		case "lemmas":
 			j, _ := json.MarshalIndent(p.Data.MainLemmas, "", "  ")
-			log.Infof("Printing main lemmas in %v", c.File)
+			log.Infof("printing main lemmas in %v", c.File)
 			log.Info(string(j))
 		case "full":
 			j, _ := json.MarshalIndent(p.Data, "", "  ")
-			log.Infof("Printing full analysis for %v", c.File)
+			log.Infof("printing full analysis for %v...", c.File)
 			log.Info(string(j))
 		}
 	case "hatespeech":
@@ -254,7 +256,7 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 			return err
 		}
 		j, _ := json.MarshalIndent(p.Data, "", "  ")
-		log.Infof("Printing hate speech analysis %v", c.File)
+		log.Infof("printing hate speech analysis for %v...", c.File)
 		log.Info(string(j))
 
 	default:
