@@ -44,6 +44,7 @@ type WitnessReport struct {
 }
 
 type MediaReport struct {
+	Id            string
 	DateSubmitted string
 	Reporter      string
 	Text          string

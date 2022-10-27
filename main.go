@@ -230,7 +230,7 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 		j, _ := json.MarshalIndent(p.Data.Extractions, "", "  ")
 		log.Info(string(j))
 
-	case "topics", "relations", "lemmas", "mainphrases", "full":
+	case "topics", "relations", "entities", "lemmas", "mainphrases", "full":
 		p, err := nlu.Analyze(ctx, string(f))
 		if p.Success == nil || !*p.Success {
 			log.Errorf("could not get call expert.ai NLU API for file %v: %v", c.File, err)
@@ -244,6 +244,10 @@ func (c *NLUCmd) Run(clictx *kong.Context) error {
 		case "relations":
 			j, _ := json.MarshalIndent(p.Data.Relations, "", "  ")
 			log.Infof("printing relations in %v", c.File)
+			log.Info(string(j))
+		case "entities":
+			j, _ := json.MarshalIndent(p.Data.Entities, "", "  ")
+			log.Infof("printing entities in %v", c.File)
 			log.Info(string(j))
 		case "lemmas":
 			j, _ := json.MarshalIndent(p.Data.MainLemmas, "", "  ")
