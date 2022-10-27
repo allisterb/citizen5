@@ -16,6 +16,7 @@ import (
 	"github.com/allisterb/citizen5/crypto"
 	"github.com/allisterb/citizen5/db"
 	"github.com/allisterb/citizen5/nym"
+	"github.com/allisterb/citizen5/util"
 )
 
 var log = logging.Logger("citizen5/server")
@@ -73,7 +74,7 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
-
+	util.Shutdown = true
 	srv.Shutdown(ctx)
 	orbit.Close()
 	dbcleanup()
@@ -85,7 +86,9 @@ func Monitor(ctx context.Context, conn *websocket.Conn, stores db.DataStores) er
 	log.Info("citizen5 Nym service provider running")
 	for {
 		msg, err := nym.ReceiveMessage(conn)
-		if err == nil {
+		if err == nil && util.Shutdown {
+			return nil
+		} else if err == nil {
 			cmd.HandleRemoteCommand(ctx, msg.Binary, stores)
 		}
 	}

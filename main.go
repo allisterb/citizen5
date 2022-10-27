@@ -68,6 +68,7 @@ func init() {
 		logging.SetLogLevel("dht/RtRefreshManager", "error")
 		logging.SetLogLevel("bitswap", "error")
 		logging.SetLogLevel("connmgr", "error")
+		logging.SetLogLevel("net/identify", "error")
 	}
 }
 

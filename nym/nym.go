@@ -7,6 +7,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/allisterb/citizen5/util"
 )
 
 type Message struct {
@@ -219,7 +221,9 @@ func Receive(conn *websocket.Conn) ([]byte, error) {
 func ReceiveMessage(conn *websocket.Conn) (Message, error) {
 	msg := Message{}
 	r, err := Receive(conn)
-	if err != nil {
+	if err != nil && util.Shutdown {
+		return msg, nil
+	} else if err != nil {
 		log.Errorf("error receiving message from Nym WebSocket connection: %v", err)
 		return msg, err
 	}

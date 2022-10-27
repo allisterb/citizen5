@@ -13,6 +13,8 @@ var DbDir = filepath.Join(AppData, "db")
 
 var ClientConfigFile = filepath.Join(AppData, "client.json")
 
+var Shutdown = false
+
 func GetUserHomeDir() string {
 	h, err := os.UserHomeDir()
 	if err != nil {
