@@ -16,16 +16,16 @@ var log = logging.Logger("citizen5/cmd")
 
 func HandleRemoteCommand(ctx context.Context, cmd []byte, datastores db.DataStores) {
 	var doc map[string]interface{}
-	var report models.WitnessReport
+	var witnessreport models.WitnessReport
 	var mediareport models.MediaReport
-	if json.Unmarshal(cmd, &report) == nil {
-		log.Infof("received submit witness-report command from %s", report.Reporter)
-		report.Analysis = models.NLUAnalysis{}
-		p, err := nlu.Pii(ctx, report.Text)
+	if json.Unmarshal(cmd, &witnessreport) == nil {
+		log.Infof("received submit witness-report command from %s", witnessreport.Reporter)
+		witnessreport.Analysis = models.NLUAnalysis{}
+		p, err := nlu.Pii(ctx, witnessreport.Text)
 		if err != nil {
-			log.Errorf("error getting PII info: %v", err)
+			log.Errorf("could not get PII info from expert.ai: %v", err)
 		} else {
-			report.Analysis.Pii = p
+			witnessreport.Analysis.Pii = p
 		}
 		if err := json.Unmarshal(cmd, &doc); err != nil {
 			log.Errorf("Could not unmarshal WitnessReport data as map")
@@ -39,13 +39,13 @@ func HandleRemoteCommand(ctx context.Context, cmd []byte, datastores db.DataStor
 			log.Infof("report %v stored in database", doc["_id"])
 		}
 	} else if json.Unmarshal(cmd, &mediareport) == nil {
-		log.Infof("received submit media-report command from %s", report.Reporter)
-		report.Analysis = models.NLUAnalysis{}
-		hs, err := nlu.HateSpeech(ctx, report.Text)
+		log.Infof("received submit media-report command from %s", mediareport.Reporter)
+		mediareport.Analysis = models.NLUAnalysis{}
+		hs, err := nlu.HateSpeech(ctx, mediareport.Text)
 		if err != nil {
-			log.Errorf("error getting hate speech info: %v", err)
+			log.Errorf("could not get hate speech info from expert.ai: %v", err)
 		} else {
-			report.Analysis.HateSpeech = hs
+			mediareport.Analysis.HateSpeech = hs
 		}
 		if err := json.Unmarshal(cmd, &doc); err != nil {
 			log.Errorf("could not unmarshal MediaReport data as map")
