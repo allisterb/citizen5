@@ -435,7 +435,7 @@ type Response struct {
 			JSONLD *struct {
 				// JSON-LD context
 				Context *struct {
-					Version            *string `json:"@version,omitempty"`
+					Version            *json.Number `json:"@version,omitempty"`
 					CVV                *string `json:"CVV,omitempty"`
 					IBAN               *string `json:"IBAN,omitempty"`
 					IBANcountry        *string `json:"IBANcountry,omitempty"`
