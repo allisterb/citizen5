@@ -20,15 +20,17 @@ func HandleRemoteCommand(ctx context.Context, cmd []byte, datastores db.DataStor
 		log.Infof("received submit witness-report command from %s", report.Reporter)
 
 		if err := json.Unmarshal(cmd, &doc); err != nil {
-			log.Errorf("Could not unmarshal Report data as map")
+			log.Errorf("Could not unmarshal WitnessReport data as map")
 			return
 		}
 		doc["_id"] = uuid.New().String()
 		_, err := datastores.Reports.Put(ctx, doc)
 		if err != nil {
 			log.Errorf("error putting report to database:%v", err)
+		} else {
+			log.Infof("report %v stored in database", doc["_id"])
 		}
 		//err := datastores.Reports.Sync()
-		datastores.DB.Close()
+		//datastores.DB.Close()
 	}
 }
