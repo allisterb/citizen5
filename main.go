@@ -87,8 +87,8 @@ func main() {
 func (l *PingCmd) Run(ctx *kong.Context) error {
 	conn, err := nym.GetConn(CLI.WSUrl)
 	if err != nil {
-		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
-		return nil
+		err = fmt.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
+		return err
 	}
 	defer conn.Close()
 	if l.Address == "" {
@@ -122,11 +122,11 @@ func (c *InitCmd) Run(clictx *kong.Context) error {
 	data, _ := json.MarshalIndent(clientConfig, "", " ")
 	err := ioutil.WriteFile(filepath.Join(util.GetUserHomeDir(), ".citizen5", "client.json"), data, 0644)
 	if err != nil {
-		log.Errorf("error creating client configuration file: %v", err)
-		return nil
+		err = fmt.Errorf("error creating client configuration file: %v", err)
+		return err
 	}
-	log.Infof("client identity is %s.", crypto.GetIdentity(pub).Pretty())
-	log.Infof("citizen5 client initialized.")
+	log.Infof("client identity is %s", crypto.GetIdentity(pub).Pretty())
+	log.Infof("citizen5 client initialized")
 	return nil
 }
 
@@ -135,43 +135,43 @@ func (s *InitServerCmd) Run(clictx *kong.Context) error {
 	priv, pub := crypto.GenerateIdentity()
 	err := db.CreateDB(ctx, priv, pub)
 	if err != nil {
-		log.Errorf("error creating OrbitDB database: %v", err)
-		return nil
+		err = fmt.Errorf("error creating OrbitDB database: %v", err)
+		return err
 	}
 	serverConfig := server.Config{Pubkey: pub, PrivKey: priv}
 	data, _ := json.MarshalIndent(serverConfig, "", " ")
 	err = ioutil.WriteFile(filepath.Join(util.GetUserHomeDir(), ".citizen5", "server.json"), data, 0644)
 	if err != nil {
-		log.Errorf("error creating server configuration file: %v", err)
-		return nil
+		err = fmt.Errorf("error creating server configuration file: %v", err)
+		return err
 	}
-	log.Infof("server identity is %s.", crypto.GetIdentity(pub).Pretty())
-	log.Infof("citizen5 server initialized.")
+	log.Infof("server identity is %s", crypto.GetIdentity(pub).Pretty())
+	log.Infof("citizen5 server initialized")
 	return nil
 }
 
 func (s *ServerCmd) Run(clictx *kong.Context) error {
 	if !util.PathExists(util.ServerConfigFile) || !util.PathExists(util.DbDir) {
-		log.Errorf("The server config file %s or database directory %s does not exist. Initialize the server first.", util.ServerConfigFile, util.DbDir)
-		return fmt.Errorf("server config file or database directory not found")
+		err := fmt.Errorf("the server config file %s or database directory %s does not exist...initialize the server first", util.ServerConfigFile, util.DbDir)
+		return err
 	}
 	c, err := ioutil.ReadFile(util.ServerConfigFile)
 	if err != nil {
-		log.Errorf("could not read data from server configuration file: %v", err)
+		err = fmt.Errorf("could not read data from server configuration file: %v", err)
 		return err
 	}
 	var config server.Config
 	if json.Unmarshal(c, &config) != nil {
-		log.Errorf("could not read JSON data from server configuration file: %v", err)
+		err = fmt.Errorf("could not read JSON data from server configuration file: %v", err)
 		return err
 	}
 	ctx, _ := context.WithCancel(context.Background())
 	conn, err := nym.GetConn(CLI.WSUrl)
-	if err != nil {
-		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
-		return nil
+	if err == nil && conn != nil {
+		defer conn.Close()
+	} else if err != nil {
+		log.Errorf("could not open connection to Nym WebSocket %s:%v...Nym service provider will not be available", CLI.WSUrl, err)
 	}
-	defer conn.Close()
 	return server.Run(ctx, config, conn)
 }
 

@@ -147,7 +147,7 @@ func Pii(ctx context.Context, text string) (pii.Response, error) {
 		return data, err
 	}
 	err = json.Unmarshal(b, &data)
-	log.Infof("calling expert.ai hate speech API completed")
+	log.Infof("calling expert.ai PII API completed")
 	return data, err
 }
 

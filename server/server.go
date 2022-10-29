@@ -27,9 +27,9 @@ type Config struct {
 }
 
 func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
-	log.Infof("Starting server...")
+	log.Infof("server starting...")
 	id := crypto.GetIdentity(config.Pubkey)
-	log.Infof("server identity is %s.", id.Pretty())
+	log.Infof("server identity is %s", id.Pretty())
 	orbit, dbcleanup, err := db.OpenDB(ctx, config.PrivKey, config.Pubkey)
 	if err != nil {
 		return err
@@ -44,7 +44,9 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 		Reports: reports,
 	}
 
-	go Monitor(ctx, conn, datastores)
+	if conn != nil {
+		go Monitor(ctx, conn, datastores)
+	}
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -66,19 +68,23 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 	}
 
 	go func() {
-		log.Infof("starting REST server on %s...", srv.Addr)
-		if err := srv.ListenAndServe(); err != nil {
-			log.Infof("REST server shutdown requested: %s", err)
+		log.Infof("REST server started on %s...", srv.Addr)
+		if err := srv.ListenAndServe(); err == http.ErrServerClosed {
+			log.Info("REST server shutdown")
+		} else {
+			log.Errorf("REST server error: %v", err)
 		}
 	}()
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
+	log.Infof("server started")
 	<-quit
+	log.Info("server shutting down...")
 	util.Shutdown = true
 	srv.Shutdown(ctx)
 	orbit.Close()
 	dbcleanup()
-	log.Info("server shutdown completed.")
+	log.Info("server shutdown completed")
 	return nil
 }
 

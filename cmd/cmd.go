@@ -58,5 +58,7 @@ func HandleRemoteCommand(ctx context.Context, cmd []byte, datastores db.DataStor
 		} else {
 			log.Infof("media report %v stored in database", doc["_id"])
 		}
+	} else {
+		log.Errorf("Unknown command received: %v", string(cmd))
 	}
 }
