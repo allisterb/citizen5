@@ -68,9 +68,9 @@ func Run(ctx context.Context, config Config, conn *websocket.Conn) error {
 	}
 
 	go func() {
-		log.Infof("REST server started on %s...", srv.Addr)
+		log.Infof("REST server started on %s", srv.Addr)
 		if err := srv.ListenAndServe(); err == http.ErrServerClosed {
-			log.Info("REST server shutdown")
+			log.Info("REST server on %s shutdown completed", srv.Addr)
 		} else {
 			log.Errorf("REST server error: %v", err)
 		}

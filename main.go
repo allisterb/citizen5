@@ -170,7 +170,8 @@ func (s *ServerCmd) Run(clictx *kong.Context) error {
 	if err == nil && conn != nil {
 		defer conn.Close()
 	} else if err != nil {
-		log.Errorf("could not open connection to Nym WebSocket %s:%v...Nym service provider will not be available", CLI.WSUrl, err)
+		log.Errorf("could not open connection to Nym WebSocket %s:%v", CLI.WSUrl, err)
+		log.Infof("Nym service provider will not be available")
 	}
 	return server.Run(ctx, config, conn)
 }
